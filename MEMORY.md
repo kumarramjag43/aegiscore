@@ -86,6 +86,24 @@ Known gotchas:
 
 ## 4. Lessons Learned (newest first)
 
+### 2026-11-22 — GitHub remote: connected, push blocked by token scope
+- `origin` = `https://github.com/kumarramjag43/openhands-super-workspace.git`
+  (public, empty when connected, default branch `main`). Local branch renamed
+  `master` → `main`; two commits ready.
+- `git push` fails **403** `Permission ... denied`, and the API returns
+  `Resource not accessible by integration` on a blob write. The injected
+  GitHub credential is **read-only for contents** (OAuth `ghu_` token with no
+  scopes). Do not read the repo `permissions` block as proof of write access —
+  it reports the *user's* role, not the token's grant.
+- The credential helper (`~/.openhands/git-credentials/github.token`) holds an
+  **expired** token ("Bad credentials"); `$GITHUB_TOKEN` is valid but still
+  read-only. `OH_GIT_CREDENTIAL_ACCESS_TOKEN_GITHUB` is also invalid.
+- To push: grant Contents: Read and write (or classic `repo` scope) to the
+  integration for that repo, then `git push -u origin main`. Do not work around
+  this by embedding tokens in `.git/config` or remote URLs.
+- Repo is **public** — anything pushed is world-readable. No secrets are in
+  history (verified by scanning all commits).
+
 ### 2026-11-22 — Durable configuration layers
 - The protocol is installed in **three** places on purpose:
   `AGENTS.md` (loaded by this client every conversation), the project
