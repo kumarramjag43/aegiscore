@@ -1,5 +1,7 @@
 # MEMORY.md — Persistent Project Memory
 
+> **Rule: always read `MEMORY.md` before starting any task and update it after finishing.**
+
 **Read this file before starting any task. Update it after finishing.**
 
 This is the durable memory of this workspace. It survives conversations and
@@ -60,30 +62,49 @@ outranks general defaults. If a rule here conflicts with a habit, this file wins
 | Workspace | `/workspace/project` (git repo, initially empty) |
 | MCP config | `.openhands/mcp.json` — canonical, schema-validated |
 
-**Verified MCP servers** (tested end-to-end: initialize → `tools/list` → tool call)
+**Active MCP servers** (all four are in use in this workspace)
 
-| Server | Package | Memory | Notes |
+| Server | How it is provided | Status | Purpose / notes |
 | --- | --- | --- | --- |
-| `context7` | `@upstash/context7-mcp@4.7.3` | ~103 MB RSS | tools: `resolve-library-id`, `query-docs`; `resolve-library-id` requires **both** `libraryName` and `query` |
-| `playwright` | `@playwright/mcp@0.0.86` | ~102 MB idle, ~1.05 GB while a page is open | 25 tools; `browser_click` needs `target` (ref), not `ref` |
+| `context7` | `.openhands/mcp.json` → `@upstash/context7-mcp@4.7.3`, stdio, ~103 MB | Configured + handshake-verified; tools appear after the conversation is started with this config | Current library/API docs. Tools: `resolve-library-id`, `query-docs`. `resolve-library-id` requires **both** `libraryName` and `query` |
+| `tavily` | Client-provided MCP, active in-session | Active | Web search/extract/crawl/map/research (`default_tavily_*` tools). Use for current facts beyond the model cutoff |
+| `rea` | Client-provided MCP, active in-session | Active | Reverse-engineering / binary analysis toolset (200+ `rea_*` tools: native analysis, artifacts, web, Android). Heavy — run one deep analysis at a time |
+| `playwright` | `.openhands/mcp.json` → `@playwright/mcp@0.0.86`, stdio, system Chromium | Configured + handshake-verified; tools appear after the conversation is started with this config | Browser UI testing, 25 tools. ~102 MB idle, **~1.05 GB while a page is open**. `browser_click` needs `element` + `target` (not `ref`) |
 
 Known gotchas:
 - Playwright MCP blocks `file://` URLs. Serve local files over HTTP
   (`python3 -m http.server`) instead.
 - `--image-responses omit` is intentional: screenshots would flood context and
   raise memory use. Flip to `allow` only for a specific visual check.
-- Context7 and Playwright are stdio servers started per conversation; there is
-  **no** on-disk MCP settings file in this deployment — settings are persisted
-  server-side per client settings key.
+- `context7` and `playwright` are stdio servers started per conversation; there
+  is **no** on-disk MCP settings file in this deployment — settings are
+  persisted server-side per client settings key.
+- `tavily` and `rea` are supplied by the client, not by `.openhands/mcp.json`.
+  Do not assume they are available on a different machine until verified.
 
 ---
 
 ## 4. Lessons Learned (newest first)
 
+### 2026-11-22 — Durable configuration layers
+- The protocol is installed in **three** places on purpose:
+  `AGENTS.md` (loaded by this client every conversation), the project
+  microagent (`.openhands/microagents/master_workflow.md`), and the global
+  copies at `~/.openhands/microagents/master_workflow.md` +
+  `~/.openhands/skills/master-workflow/SKILL.md` (skill frontmatter matches the
+  format of the installed public skills: `name` / `description` / `triggers`).
+- Editing one copy without the others causes drift. After any protocol change,
+  copy the body to all three and re-diff them.
+- `~/.openhands/` is per-user and outside git: it is not captured by commits in
+  this repo, so it must be recreated on a new machine.
+
 ### 2026-11-22 — Bootstrap session
-- This agent-server build (1.63.1) does **not** load `.openhands/microagents/`.
-  Repo context is loaded from `AGENTS.md`, so `AGENTS.md` carries the binding
-  rules and points at the microagent file. Keep both in sync.
+- This agent-server build (1.63.1) has **no microagent loader** in the server
+  bundle (verified by scanning it for `microagent`/`.openhands/microagents`).
+  Repo context is loaded from `AGENTS.md`; skills load from
+  `~/.openhands/skills/`. The microagent files are kept as the standard
+  OpenHands location so the protocol travels with the repo and works on other
+  clients/versions, but do not assume they are injected here.
 - MCP servers are not read from a file at conversation start by this runtime.
   `.openhands/mcp.json` is the version-controlled source of truth; servers must
   be added through the client (Settings → MCP) or the authenticated API

@@ -1,47 +1,85 @@
 # AGENTS.md
 
 Operational contract for this workspace. Applies to every conversation.
+Full protocol: `.openhands/microagents/master_workflow.md` (also installed
+globally at `~/.openhands/microagents/master_workflow.md`).
 
-## 1. Session start — mandatory
+## 0. Session start — mandatory
 
-Read `MEMORY.md` (workspace root) in full before planning or editing anything.
-It holds binding project rules, verified environment facts, and past lessons.
-Then read `.openhands/microagents/master_workflow.md` for the full protocol.
+1. Read `MEMORY.md` (workspace root) in full. It holds binding rules, verified
+   environment facts, active MCP servers, and past lessons.
+2. Read `.openhands/microagents/master_workflow.md`.
+3. Work through the three phases below, in order, without skipping.
 
-## 2. Three-phase workflow — mandatory
+## The Three-Phase Protocol (strict)
 
-| Phase | Deliverable | Exit gate |
-| --- | --- | --- |
-| **1. Architect** | Written plan: scope, files/functions, edge cases, failure modes, security model, verification commands | Plan names concrete files and decisions; no "figure it out later" |
-| **2. Builder** | Minimal, modular, secure implementation | Runs; no placeholders, debug output, or drive-by refactors |
-| **3. QA & Security Auditor** | Tests + lint/types + security review, auto-fixed until green | All checks pass or are reported as unverifiable with a reason |
+### Phase 1 — ARCHITECT
+Plan the structure, files, and edge cases **before writing any code**.
+- Scope: what is in, what is out, why.
+- Structure: files to create/modify, module boundaries, interfaces, data shapes,
+  dependencies (justified).
+- Edge cases: empty/null, huge input, unicode, concurrency, repeat invocation,
+  partial failure, offline, permission denied, rollback, platform differences.
+- Failure modes: timeout, retry, user-visible behavior.
+- Security model: trust boundaries, validation, authorization, what is never logged.
+- Verification plan: the exact commands that will prove success.
 
-End every task with the report block from the protocol:
-`Phase 1 / Phase 2 / Phase 3 / Residual risk`.
+**Gate:** concrete decisions, no "figure it out later". Trivial changes get a
+two-sentence plan — think, but do not fabricate ceremony.
 
-## 3. Hard rules
+### Phase 2 — BUILDER
+Write clean, modular, secure code with **low memory usage (16 GB RAM limit,
+no GPU)**.
+- Clean: one responsibility per unit, no duplication, no dead code or debug output.
+- Modular: small composable functions; extract on the second repetition.
+- Secure: validate/sanitize at every boundary; parameterized queries; confined
+  paths; least privilege; secrets from env only; no `eval`/`exec` on untrusted
+  data; no `shell=True` with interpolated input.
+- Low memory: stream instead of buffering; cap loops, retries, buffers, heaps;
+  one heavy process at a time; close browsers/workers when done.
+- Minimal diff: no drive-by refactors, no reformatting of unrelated lines.
+
+**Gate:** runs; matches the plan; nothing stubbed, no `TODO` left behind.
+
+### Phase 3 — QA & SECURITY AUDITOR
+Prove it, then auto-fix everything before finishing.
+- **Automated tests**: run the real suite plus tests for new behavior; cover the
+  Phase 1 edge-case matrix.
+- **Static checks**: linters, type checks, formatters — fix, never suppress.
+- **Security audit**: scan the diff for secrets/leaks, injection, path traversal,
+  SSRF, permissive CORS, missing authorization, unbounded input, unsafe
+  deserialization, and sensitive data in logs or errors.
+- **Docs**: use the `context7` MCP server for current library/API documentation.
+  Never invent a flag, config key, or signature.
+- **UI testing**: use the browser tools (Playwright MCP for interaction) on the
+  real flow — happy path plus a failure path; check console and network errors.
+- **Auto-fix loop**: every failure is fixed and re-run until green. Never weaken
+  a test, type, or lint rule to reach green.
+
+**Gate:** all checks pass or are explicitly reported as unverifiable with a
+reason; no secrets in the diff; evidence (commands + results) in the report.
+
+## Hard rules
 
 - Verify before asserting: no invented flags, config keys, or API signatures.
-- Smallest diff that satisfies the request. Do not reformat unrelated code.
 - No secrets in code, config, logs, commits, or error messages — env vars only.
-- Never weaken a test, type, or lint rule to reach green.
 - No destructive commands (force-push, history rewrite, deleting data outside
   `/tmp`) without explicit confirmation.
-- Budget for 16 GB RAM, no GPU: one heavy process at a time, bounded buffers,
-  close browsers when finished.
+- Never weaken a test, type, or lint rule to reach green.
 - Clean up scratch files and background servers you started.
 
-## 4. MCP tooling (configured in `.openhands/mcp.json`)
+## MCP servers
 
-- `context7` — use for current library/API documentation instead of guessing.
-  `resolve-library-id` requires both `libraryName` and `query`; then `query-docs`.
-- `playwright` — use for browser UI verification. Headless, system Chromium,
-  in-memory profile. Serve local files over HTTP (`python3 -m http.server`);
-  `file://` is blocked. Call `browser_close` when done (~1 GB while open).
-- Prefer built-in `browser_*` tools for simple page reads; reach for Playwright
-  MCP when you need real interaction (forms, clicks, console/network capture).
+Configured in `.openhands/mcp.json`: `context7` (docs) and `playwright` (UI).
+Active in-session MCP tools also include `tavily` (web research) and `rea`
+(reverse-engineering analysis). Current inventory and status live in
+`MEMORY.md` §3 — trust that table over this summary if they disagree.
 
-## 5. Session end — mandatory
+## Session end — mandatory
 
 Update `MEMORY.md`: append dated lessons under §4, promote durable rules into
-§2, and keep §5 (Open Questions) honest about what remains unverified.
+§2, keep §5 (Open Questions) honest. Then report:
+
+```
+Phase 1 / Phase 2 / Phase 3 / Residual risk
+```
