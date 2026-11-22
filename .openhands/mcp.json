@@ -1,0 +1,51 @@
+{
+  "mcpServers": {
+    "context7": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@4.7.3",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=192"
+      },
+      "description": "Version-pinned documentation lookup (Context7). Read-only, no local state. ~100 MB RSS.",
+      "timeout": 60,
+      "enabled": true
+    },
+    "playwright": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.86",
+        "--headless",
+        "--isolated",
+        "--no-sandbox",
+        "--executable-path",
+        "/usr/bin/chromium",
+        "--viewport-size",
+        "1280x720",
+        "--block-service-workers",
+        "--image-responses",
+        "omit",
+        "--output-dir",
+        "/tmp/pw-mcp",
+        "--timeout-navigation",
+        "30000",
+        "--timeout-action",
+        "15000"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=384",
+        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1"
+      },
+      "description": "Browser UI testing via the system Chromium (no bundled browser download). Headless, in-memory profile, screenshots omitted to keep context and RSS low. Peak ~1 GB while a page is open; call browser_close when done.",
+      "timeout": 120,
+      "enabled": true
+    }
+  }
+}
