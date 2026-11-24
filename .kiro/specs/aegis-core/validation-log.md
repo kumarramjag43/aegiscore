@@ -26,7 +26,7 @@ $ echo $?
 Zero diagnostics. `strict`, `noEmit`, `moduleResolution: bundler` in every
 workspace.
 
-## 2. Test suite — 32 offline cases
+## 2. Test suite — 40 offline cases
 
 ```
 $ npm test

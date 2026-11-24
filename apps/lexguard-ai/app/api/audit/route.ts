@@ -1,4 +1,4 @@
-import { contractFraudPack, createAuditSseStream } from "@aegiscore/core";
+import { contractFraudPack, createAuditSseStream, readByok } from "@aegiscore/core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,11 +21,19 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Provide a contract, invoice or agreement to audit." }, { status: 400 });
   }
 
+  // Optional BYOK: a key pasted in the browser arrives as a request header and
+  // is used for this run only. It is never stored, logged, or echoed back.
+  const byok = readByok(request.headers, process.env);
+  if (byok.kind === "invalid") {
+    return Response.json({ error: byok.reason }, { status: 400 });
+  }
+
   const stream = createAuditSseStream({
     pack: contractFraudPack,
     input,
     title,
-    env: process.env,
+    env: byok.kind === "ok" ? byok.config.env : process.env,
+    redact: byok.kind === "ok" ? byok.config.redact : undefined,
     maxInputChars: MAX_INPUT,
     signal: request.signal,
   });

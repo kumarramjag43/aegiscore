@@ -7,6 +7,7 @@ import {
   createSseStream,
   detectHits,
   diffDocuments,
+  errorMessage,
   extractJsonObject,
   formatBytes,
   guessFileName,
@@ -14,6 +15,7 @@ import {
   normalizeCritique,
   readUploadedText,
   parseClauses,
+  readByok,
   resolveLlmClient,
   runAudit,
   clampInput,
@@ -382,5 +384,283 @@ describe("demo mode", () => {
   it("uses the live provider once demo mode is off", () => {
     const client = resolveLlmClient({ OPENAI_API_KEY: "sk-not-a-real-key" }, codeSecurityPack);
     assert.equal(client.mode, "live");
+  });
+});
+
+/* ------------------------------------------------------------------ BYOK */
+
+/** Minimal `Headers` stand-in: enough for `readByok`, no DOM dependency. */
+function headersOf(init: Record<string, string>) {
+  const lower = new Map(Object.entries(init).map(([key, value]) => [key.toLowerCase(), value]));
+  return { get: (name: string) => lower.get(name.toLowerCase()) ?? null };
+}
+
+describe("byok request keys", () => {
+  it("turns a pasted key into an env overlay that outranks DEMO_MODE", () => {
+    const key = "AIzaSyD-byok-test-key-1234567890";
+    const result = readByok(
+      headersOf({ "x-aegis-api-key": key, "x-aegis-provider": "gemini" }),
+      { DEMO_MODE: "true", OPENAI_API_KEY: "sk-server-side-key" },
+    );
+
+    assert.equal(result.kind, "ok");
+    if (result.kind !== "ok") return;
+    assert.equal(result.config.provider, "gemini");
+    assert.equal(result.config.env.GEMINI_API_KEY, key);
+    assert.equal(result.config.env.DEMO_MODE, "false", "an explicit key must beat DEMO_MODE");
+    assert.equal(result.config.env.AEGIS_PROVIDER, "gemini");
+    assert.deepEqual(result.config.redact, [key]);
+
+    const client = resolveLlmClient(result.config.env, codeSecurityPack);
+    assert.equal(client.id, "gemini");
+    assert.equal(client.mode, "live");
+  });
+
+  it("infers the provider from the key prefix when no header is sent", () => {
+    const cases: Array<[string, string]> = [
+      ["AIzaSyD-byok-test-key-1234567890", "gemini"],
+      ["gsk_byoktestkey1234567890", "groq"],
+      ["sk-byok-test-key-1234567890", "openai"],
+    ];
+    for (const [key, provider] of cases) {
+      const result = readByok(headersOf({ "x-aegis-api-key": key }));
+      assert.equal(result.kind, "ok", `${provider} key should validate`);
+      if (result.kind === "ok") assert.equal(result.config.provider, provider);
+    }
+  });
+
+  it("ignores requests without a key and rejects malformed ones", () => {
+    assert.equal(readByok(headersOf({})).kind, "none");
+
+    const tooShort = readByok(headersOf({ "x-aegis-api-key": "abc" }));
+    assert.equal(tooShort.kind, "invalid");
+
+    const spaced = readByok(headersOf({ "x-aegis-api-key": "sk-with a space in it 123" }));
+    assert.equal(spaced.kind, "invalid");
+
+    const unknown = readByok(
+      headersOf({ "x-aegis-api-key": "sk-byok-test-key-1234567890", "x-aegis-provider": "mistral" }),
+    );
+    assert.equal(unknown.kind, "invalid");
+
+    const providerOnly = readByok(headersOf({ "x-aegis-provider": "openai" }));
+    assert.equal(providerOnly.kind, "invalid");
+
+    const oversized = readByok(headersOf({ "x-aegis-api-key": `sk-${"a".repeat(600)}` }));
+    assert.equal(oversized.kind, "invalid");
+  });
+
+  it("never lets a request key reach an error message", () => {
+    const key = "sk-byok-secret-value-abcdef123456";
+    const message = errorMessage(new Error(`Provider rejected key ${key} with 401`), [key]);
+    assert.equal(message.includes(key), false);
+    assert.ok(message.includes("[redacted]"));
+    assert.equal(redactSecrets(`token=${key}`, 400, [key]).includes(key), false);
+  });
+});
+
+/* ------------------------------------------- negative & incomplete-fix QA */
+
+const CLEAN_API = `// api/invoices.js — parameterised, validated, no secrets
+import express from "express";
+import { pool } from "../db.js";
+
+const router = express.Router();
+
+router.get("/invoices/:id", async (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid invoice id" });
+  }
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, amount_cents, status FROM invoices WHERE id = $1 AND tenant_id = $2",
+      [id, req.tenant.id],
+    );
+    if (rows.length === 0) return res.status(404).json({ error: "Not found" });
+    return res.json(rows[0]);
+  } catch {
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+export default router;
+`;
+
+const FAIR_CONTRACT = `MUTUAL SERVICES AGREEMENT
+
+1. Term. This Agreement begins on the Effective Date and continues for twelve (12) months. Either
+party may decline to extend it by written notice given thirty (30) days before the end of the term.
+
+2. Fees. Fees are fixed for the Initial Term at the amounts stated in the Order Form. Any increase
+requires ninety (90) days' prior written notice, is capped at the lower of 3% or CPI, and the
+Customer may terminate without penalty before the increase takes effect.
+
+3. Payment. Invoices are payable net thirty (30) days. Late payments accrue simple interest at the
+lower of 1% per month or the maximum rate permitted by law, after a fifteen (15) day grace period.
+
+4. Liability. Each party's aggregate liability under this Agreement shall not exceed the total fees
+paid or payable during the twelve (12) months preceding the event giving rise to the claim. Neither
+party shall be liable for indirect, incidental or consequential loss.
+
+5. Confidentiality. Each party shall protect the other's confidential information with at least the
+care it uses for its own, and shall return or delete it within thirty (30) days of termination.
+
+6. Data. The Supplier processes Customer Data solely to deliver the Services and shall delete or
+return all Customer Data within thirty (30) days of termination.
+
+7. Termination. Either party may terminate for convenience on thirty (30) days' written notice, or
+immediately for an uncured material breach after a thirty (30) day cure period. The Supplier shall
+provide a sixty (60) day transition period and full export of Customer Data.
+
+8. Governing law. This Agreement is governed by the laws of England and Wales, and the parties
+submit to the non-exclusive jurisdiction of its courts.
+`;
+
+describe("negative cases — no false-positive criticals", () => {
+  it("a hardened API handler produces zero critical findings", async () => {
+    const report = await collectAudit({
+      pack: codeSecurityPack,
+      input: CLEAN_API,
+      pace: INSTANT,
+      env: {},
+    });
+
+    assert.ok(report, "a report is still produced");
+    const critical = report.findings.filter((finding) => finding.severity === "critical");
+    assert.equal(
+      critical.length,
+      0,
+      `unexpected critical findings: ${critical.map((finding) => finding.title).join(" | ")}`,
+    );
+    assert.ok(report.risk.score < 60, `risk should stay low, got ${report.risk.score}`);
+  });
+
+  it("a balanced contract produces zero critical findings", async () => {
+    const report = await collectAudit({
+      pack: contractFraudPack,
+      input: FAIR_CONTRACT,
+      pace: INSTANT,
+      env: {},
+    });
+
+    assert.ok(report, "a report is still produced");
+    const critical = report.findings.filter((finding) => finding.severity === "critical");
+    assert.equal(
+      critical.length,
+      0,
+      `unexpected critical findings: ${critical.map((finding) => finding.title).join(" | ")}`,
+    );
+    assert.ok(report.risk.score < 60, `risk should stay low, got ${report.risk.score}`);
+  });
+});
+
+describe("negative cases — the verifier rejects broken fixes", () => {
+  const input = codeSecurityPack.presets[0]?.content ?? "";
+
+  /** A live provider that reports the real findings but refuses to fix them. */
+  function lazyHealer(): LlmClient {
+    const scan = codeSecurityPack.sandbox.scan(input);
+    const critique = codeSecurityPack.sandbox.critique(input, scan);
+    return {
+      id: "lazy",
+      label: "Lazy Provider",
+      mode: "live",
+      async complete(request) {
+        switch (request.stage) {
+          case "scanner":
+            return JSON.stringify(scan);
+          case "critic":
+            return JSON.stringify(critique);
+          case "healer":
+            return JSON.stringify({
+              strategy: "Acknowledged but unchanged.",
+              patches: [],
+              repairedDocument: input,
+            });
+          default:
+            return JSON.stringify([]);
+        }
+      },
+    };
+  }
+
+  it("fails verification when the healer returns the artefact unchanged", async () => {
+    const report = await collectAudit({
+      pack: codeSecurityPack,
+      input,
+      pace: INSTANT,
+      llm: lazyHealer(),
+    });
+
+    assert.ok(report);
+    assert.ok(
+      report.findings.some((finding) => finding.severity === "critical"),
+      "the critic must still find the SQL injection",
+    );
+    assert.equal(report.verification.passed, false);
+
+    const failed = report.verification.checks.filter((check) => !check.passed).map((check) => check.id);
+    assert.ok(failed.includes("core.patch.coverage"), `expected coverage failure, got ${failed.join(",")}`);
+    assert.ok(failed.includes("core.artefact.changed"), `expected unchanged-artefact failure`);
+    assert.ok(report.verification.confidence < 96, "confidence must drop for a rejected fix");
+    assert.ok(
+      report.verification.notes.some((note) => note.includes("verification check(s) failed")),
+      "the report must say why it was rejected",
+    );
+  });
+
+  it("fails verification when patches are no-ops that change nothing", async () => {
+    const scan = codeSecurityPack.sandbox.scan(input);
+    const critique = codeSecurityPack.sandbox.critique(input, scan);
+    const critical = critique.findings.find((finding) => finding.severity === "critical");
+    assert.ok(critical, "preset must contain a critical finding");
+
+    const noopClient: LlmClient = {
+      id: "noop",
+      label: "No-op Provider",
+      mode: "live",
+      async complete(request) {
+        switch (request.stage) {
+          case "scanner":
+            return JSON.stringify(scan);
+          case "critic":
+            return JSON.stringify(critique);
+          case "healer":
+            return JSON.stringify({
+              strategy: "Touch nothing.",
+              patches: [
+                {
+                  id: "P-01",
+                  findingId: critical.id,
+                  title: "No-op patch",
+                  rationale: "Left as-is.",
+                  original: "const q = req.query.id;",
+                  replacement: "const q = req.query.id;",
+                },
+              ],
+              // Different from the input, but the vulnerable line is untouched.
+              repairedDocument: `${input}\n// reviewed`,
+            });
+          default:
+            return JSON.stringify([]);
+        }
+      },
+    };
+
+    const report = await collectAudit({
+      pack: codeSecurityPack,
+      input,
+      pace: INSTANT,
+      llm: noopClient,
+    });
+
+    assert.ok(report);
+    assert.equal(report.verification.passed, false);
+    const failed = report.verification.checks.filter((check) => !check.passed).map((check) => check.id);
+    assert.ok(
+      failed.includes("core.patch.effective"),
+      `expected no-op patch failure, got ${failed.join(",")}`,
+    );
   });
 });

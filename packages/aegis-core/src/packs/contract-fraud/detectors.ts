@@ -25,6 +25,11 @@ export interface LegalSignal {
   explanation: string;
   recommendation: string;
   pattern: RegExp;
+  /**
+   * When this also matches the clause, the hit is dropped: the wording carries
+   * the remedy the signal asks for (a lawful interest cap, a mutual right).
+   */
+  unless?: RegExp;
   /** Legally safer replacement language for the flagged clause. */
   replacement: (clause: Clause) => string;
 }
@@ -223,6 +228,9 @@ export const LEGAL_SIGNALS: LegalSignal[] = [
       "Cap late interest at 1% per month simple, add a grace period, and delete penalty language.",
     pattern:
       /(?:late (?:fee|charge|payment)|overdue|default interest|interest)[^.]{0,60}?\d+(?:\.\d+)?\s?%|\bpenalt(?:y|ies)\b[^.]{0,40}?(?:per|\/)\s*(?:month|week|day)/i,
+    // "1% per month or the maximum rate permitted by law" is the remedy, not the risk.
+    unless:
+      /lower of|not exceed|capped at|maximum (?:rate |interest )?(?:permitted|allowed) by law|simple interest[^.]{0,40}maximum/i,
     replacement: () =>
       "Late payments accrue interest at the lower of 1% per month (12% per annum) or the maximum rate permitted by law, calculated on a simple basis, after a fifteen (15) day grace period. No penalties apply.",
   },
@@ -235,7 +243,7 @@ export const LEGAL_SIGNALS: LegalSignal[] = [
       "The supplier can walk away at will while you are locked in until a material breach is cured, leaving you without continuity of service.",
     recommendation: "Make termination for convenience mutual with 30 days' notice and a transition period.",
     pattern:
-      /terminate[^.]{0,60}(?:for convenience|at any time)[^.]{0,60}(?:without (?:cause|liability|notice)|immediately)/i,
+      /terminate[^.]{0,60}(?:for convenience|at any time)[^.]{0,40}without (?:cause|liability|notice|reason)|terminate[^.]{0,30}at any time[^.]{0,10}immediately/i,
     replacement: () =>
       "Either party may terminate this Agreement for convenience on thirty (30) days' written notice. The Supplier shall provide a ninety (90) day transition period, continued service at existing fees, and full export of Customer Data.",
   },
@@ -261,7 +269,7 @@ export const LEGAL_SIGNALS: LegalSignal[] = [
     recommendation:
       "Use non-exclusive jurisdiction at your seat, or neutral arbitration, and preserve jury rights.",
     pattern:
-      /exclusive jurisdiction|waive[^.]{0,40}(?:jury|class action)|binding arbitration[^.]{0,80}(?:lender|supplier|provider|vendor|company)/i,
+      /(?<!non-)\bexclusive jurisdiction|waive[^.]{0,40}(?:jury|class action)|binding arbitration[^.]{0,80}(?:lender|supplier|provider|vendor|company)/i,
     replacement: () =>
       "The parties submit to the non-exclusive jurisdiction of the courts of the Customer's principal place of business. Each party retains its right to a trial by jury, and any arbitration shall be conducted by a mutually agreed neutral body in a neutral venue.",
   },
@@ -318,6 +326,7 @@ export function detectLegalHits(doc: string): LegalHit[] {
       const match = signal.pattern.exec(clause.text);
       signal.pattern.lastIndex = 0;
       if (!match) continue;
+      if (signal.unless?.test(clause.text)) continue;
       hits.push({
         signal,
         clause,

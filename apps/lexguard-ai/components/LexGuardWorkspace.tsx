@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import {
+  BYOK_LABEL,
+  byokRequestHeaders,
   cn,
   consumeEventStream,
   type AgentDescriptor,
@@ -23,12 +25,14 @@ import {
   type AuditReport,
   type Preset,
   type ProviderInfo,
+  type StoredByok,
 } from "@aegiscore/core";
 import { AuditTimeline } from "./AuditTimeline";
 import { CounterDraft } from "./CounterDraft";
 import { ExposurePanel } from "./ExposurePanel";
 import { ReportPanel } from "./ReportPanel";
 import { FileDrop } from "./FileDrop";
+import { ByokPanel } from "./ByokPanel";
 import { PrintSheet } from "./PrintSheet";
 import { RiskHeatmap } from "./RiskHeatmap";
 import type { LogLine, StageState } from "./types";
@@ -72,6 +76,8 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
   const [report, setReport] = useState<AuditReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<ProviderInfo | null>(null);
+  // Session-scoped BYOK key; null means the sandbox engine runs.
+  const [byok, setByok] = useState<StoredByok | null>(null);
   const [tab, setTab] = useState<Tab>("audit");
   const [file, setFile] = useState<{ name: string; bytes: number } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -176,7 +182,10 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
     try {
       const response = await fetch("/api/audit", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(byok ? byokRequestHeaders(byok) : {}),
+        },
         body: JSON.stringify({ input: payload, title }),
         signal: controller.signal,
       });
@@ -257,24 +266,31 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium",
-                provider?.mode === "live"
+                byok || provider?.mode === "live"
                   ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
                   : "border-slate-500/30 bg-slate-500/10 text-slate-300",
               )}
               title={
-                provider?.mode === "live"
-                  ? "Live model calls are enabled for this app"
-                  : "Deterministic Aegis sandbox — the full pipeline runs with no API key"
+                byok
+                  ? "Your key is armed for this browser tab — the next run calls the live model"
+                  : provider?.mode === "live"
+                    ? "Live model calls are enabled for this app"
+                    : "Deterministic Aegis sandbox — the full pipeline runs with no API key"
               }
             >
               <span
-                className={cn("h-1.5 w-1.5 rounded-full", provider?.mode === "live" ? "bg-emerald-400" : "bg-slate-400")}
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  byok || provider?.mode === "live" ? "bg-emerald-400" : "bg-slate-400",
+                )}
               />
-              {provider
-                ? provider.mode === "live"
-                  ? `Live · ${provider.label}`
-                  : "Live Sandbox Engine Active"
-                : "detecting provider…"}
+              {byok
+                ? `Live · ${BYOK_LABEL[byok.provider]} (your key)`
+                : provider
+                  ? provider.mode === "live"
+                    ? `Live · ${provider.label}`
+                    : "Live Sandbox Engine Active"
+                  : "detecting provider…"}
             </span>
             <button
               type="button"
@@ -299,6 +315,8 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
             </a>
           </div>
         </header>
+
+        <ByokPanel storageKey="aegis.byok.lexguard" onChange={setByok} />
 
         <main className="mt-5 grid flex-1 gap-4 lg:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
           <section className="flex min-h-0 flex-col gap-4">
@@ -491,9 +509,11 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
           <span className="hidden sm:inline">·</span>
           <span>Same skeleton also powers CodeMedic AI</span>
           <span className="ml-auto">
-            {provider?.mode === "live"
-              ? "Live model calls enabled"
-              : "Live Sandbox Engine — deterministic pipeline, no API key required"}
+            {byok
+              ? `Live model calls enabled · ${BYOK_LABEL[byok.provider]} key armed for this tab`
+              : provider?.mode === "live"
+                ? "Live model calls enabled"
+                : "Live Sandbox Engine — deterministic pipeline, no API key required"}
           </span>
         </footer>
       </div>

@@ -16,6 +16,8 @@ import {
   X,
 } from "lucide-react";
 import {
+  BYOK_LABEL,
+  byokRequestHeaders,
   cn,
   consumeEventStream,
   guessFileName,
@@ -25,6 +27,7 @@ import {
   type AuditReport,
   type Preset,
   type ProviderInfo,
+  type StoredByok,
 } from "@aegiscore/core";
 import { AgentTerminal, type LogLine, type StageState } from "./AgentTerminal";
 import { RiskGauge } from "./RiskGauge";
@@ -32,6 +35,7 @@ import { FindingsPanel } from "./FindingsPanel";
 import { DiffPanel } from "./DiffPanel";
 import { ReportPanel } from "./ReportPanel";
 import { FileDrop } from "./FileDrop";
+import { ByokPanel } from "./ByokPanel";
 
 type Tab = "agents" | "findings" | "diff" | "report";
 type Status = "idle" | "running" | "done" | "error";
@@ -71,6 +75,8 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
   const [report, setReport] = useState<AuditReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<ProviderInfo | null>(null);
+  // Session-scoped BYOK key; null means the sandbox engine runs.
+  const [byok, setByok] = useState<StoredByok | null>(null);
   const [tab, setTab] = useState<Tab>("agents");
   const [activePreset, setActivePreset] = useState<string | null>(first?.id ?? null);
   const [file, setFile] = useState<{ name: string; bytes: number } | null>(null);
@@ -184,7 +190,10 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
     try {
       const response = await fetch("/api/audit", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(byok ? byokRequestHeaders(byok) : {}),
+        },
         body: JSON.stringify({ input: payload, title }),
         signal: controller.signal,
       });
@@ -277,27 +286,31 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium",
-                provider?.mode === "live"
+                byok || provider?.mode === "live"
                   ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
                   : "border-slate-500/30 bg-slate-500/10 text-slate-300",
               )}
               title={
-                provider?.mode === "live"
-                  ? "Live model calls are enabled for this app"
-                  : "Deterministic Aegis sandbox — the full pipeline runs with no API key"
+                byok
+                  ? "Your key is armed for this browser tab — the next run calls the live model"
+                  : provider?.mode === "live"
+                    ? "Live model calls are enabled for this app"
+                    : "Deterministic Aegis sandbox — the full pipeline runs with no API key"
               }
             >
               <span
                 className={cn(
                   "h-1.5 w-1.5 rounded-full",
-                  provider?.mode === "live" ? "bg-emerald-400" : "bg-slate-400",
+                  byok || provider?.mode === "live" ? "bg-emerald-400" : "bg-slate-400",
                 )}
               />
-              {provider
-                ? provider.mode === "live"
-                  ? `Live · ${provider.label}`
-                  : "Live Sandbox Engine Active"
-                : "detecting provider…"}
+              {byok
+                ? `Live · ${BYOK_LABEL[byok.provider]} (your key)`
+                : provider
+                  ? provider.mode === "live"
+                    ? `Live · ${provider.label}`
+                    : "Live Sandbox Engine Active"
+                  : "detecting provider…"}
             </span>
             <a
               href={LEXGUARD_URL}
@@ -308,6 +321,8 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
             </a>
           </div>
         </header>
+
+        <ByokPanel storageKey="aegis.byok.codemedic" onChange={setByok} />
 
         <main className="mt-5 grid flex-1 gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
           <section className="flex min-h-0 flex-col gap-4">

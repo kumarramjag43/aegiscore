@@ -7,6 +7,20 @@ Everything below is written to be pasted into the Kiroween 2026 Devpost form as-
 - Live CodeMedic: https://aegiscore-codemedic.vercel.app
 - Live LexGuard: https://aegiscore-lexguard.vercel.app
 
+### Repo metadata (paste once — needs repo admin, which the deploy token does not have)
+
+**About / description** (Settings → General → Description, 306 chars):
+
+```
+One skeleton, two products: a modular 4-agent orchestration core (Scanner -> Critic -> Auto-Healer -> Verifier) powering CodeMedic AI (code & API security) and LexGuard AI (contract & invoice fraud). Zero-setup sandbox, optional BYOK live LLM, SSE streaming. Kiroween 2026 - Skeleton Crew.
+```
+
+**Website:** `https://aegiscore-portal.vercel.app`
+
+**Topics:** `multi-agent` `ai-agents` `llm` `nextjs` `typescript` `monorepo` `security`
+`devsecops` `contract-analysis` `fraud-detection` `streaming` `server-sent-events` `kiroween`
+`skeleton-crew` `openai` `gemini` `groq`
+
 All three are deployed and verified: portal `200`, both products `/api/health` `ok`, and a full
 four-agent audit runs end-to-end in ~2.5 s (CodeMedic: risk 100, 3 critical findings, 3 patches,
 verifier passed @92; LexGuard: risk 100, 5 findings, 4 patches, verifier passed @92).
@@ -139,7 +153,7 @@ architecture map.
   score with a documented formula, and diff-level line anchors on every finding.
 - **Zero-friction demo:** full four-agent audit in ~2.4 s end-to-end (UI streaming pace) and
   ~250 ms of pure compute, from a fresh clone, with no key and no network.
-- **Engineering hygiene:** 32 unit tests across 9 suites, four typechecked workspaces, three
+- **Engineering hygiene:** 40 unit tests across 12 suites, four typechecked workspaces, three
   production builds, a 64-row edge-case matrix, and a validation log with the real commands and
   their output.
 - **Kiro used as intended:** specs first, then steering rules the code actually obeys, then hooks.
@@ -224,7 +238,7 @@ and the same interface upgrades to OpenAI / Gemini / Groq / Claude the moment a 
 ```
 
 ```
-4/ Shipped as a monorepo: portal + 2 Next.js apps + core package, 32 tests, 3 production builds, Kiro
+4/ Shipped as a monorepo: portal + 2 Next.js apps + core package, 40 tests, 3 production builds, Kiro
 specs and hooks in .kiro/. MIT licensed. Clone it, hover the portal map, watch one core light up both
 industries.
 ```
@@ -258,7 +272,7 @@ Deliberate engineering choices:
 — Verification by shared detectors, not a second opinion
 — Spec-first Kiro workflow: EARS requirements, Mermaid design, 64-row edge-case matrix and a
   validation log committed next to the code
-— 32 tests, 4 typechecked workspaces, 3 production builds, MIT licensed, deployable to Vercel or
+— 40 tests, 4 typechecked workspaces, 3 production builds, MIT licensed, deployable to Vercel or
   Render from the included configs
 
 Repo: https://github.com/kumarramjag43/aegiscore
@@ -290,7 +304,8 @@ API key. github.com/kumarramjag43/aegiscore
 | Verified fixes | `verify.ts` re-runs pack detectors; per-check results in every report |
 | No-key demo | `resolveLlmClient` sandbox path; `DEMO_MODE=true` in `render.yaml` |
 | Kiro native | `.kiro/specs/aegis-core/{requirements,design,tasks,test-matrix,validation-log}.md`, `.kiro/steering/architecture-rules.md`, `.kiro/hooks/*.json` |
-| Quality gates | `npm run verify` → typecheck ×4, 32/32 tests, 3 production builds |
+| Optional live LLM | Paste your own `GEMINI_API_KEY` / `OPENAI_API_KEY` / `GROQ_API_KEY` in the "Use a live LLM key (optional)" bar — session-only, header-passed, never stored; badge flips to `Live · <provider>` |
+| Quality gates | `npm run verify` → typecheck ×4, 40/40 tests, 3 production builds |
 | Deployable | `apps/*/vercel.json`, `render.yaml`, `scripts/deploy-vercel.sh`, `DEPLOY.md` |
 | Open source | `LICENSE` (MIT) |
 | Story / write-up | `BLOG_POST.md`, `README.md`, `docs/screenshots/` |

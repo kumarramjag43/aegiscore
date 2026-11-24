@@ -41,6 +41,8 @@ export interface RunAuditOptions {
   maxInputChars?: number;
   pace?: Pace;
   signal?: AbortSignal;
+  /** Request-scoped secrets (e.g. a BYOK key) to strip from every message. */
+  redact?: string[];
 }
 
 const now = () => Date.now();
@@ -95,6 +97,7 @@ async function* executeStage<T>(
   pace: Pace,
   signal: AbortSignal | undefined,
   timings: { stage: AgentStage; ms: number }[],
+  redact: readonly string[],
 ): AsyncGenerator<AgentEvent, StageOutcome<T>, void> {
   const startedAt = now();
   yield { type: "stage.started", stage: spec.stage, at: startedAt };
@@ -125,7 +128,7 @@ async function* executeStage<T>(
       type: "stage.log",
       stage: spec.stage,
       level: "warn",
-      message: `Live provider unusable (${errorMessage(error)}). Deterministic analyzers are taking over.`,
+      message: `Live provider unusable (${errorMessage(error, redact)}). Deterministic analyzers are taking over.`,
       at: now(),
     };
     value = spec.fallback();
@@ -222,6 +225,7 @@ export async function* runAudit(
       pace,
       options.signal,
       timings,
+      options.redact ?? [],
     );
     fallbackUsed = fallbackUsed || scan.fallbackUsed;
 
@@ -260,6 +264,7 @@ export async function* runAudit(
       pace,
       options.signal,
       timings,
+      options.redact ?? [],
     );
     fallbackUsed = fallbackUsed || critic.fallbackUsed;
 
@@ -294,6 +299,7 @@ export async function* runAudit(
       pace,
       options.signal,
       timings,
+      options.redact ?? [],
     );
     fallbackUsed = fallbackUsed || heal.fallbackUsed;
 

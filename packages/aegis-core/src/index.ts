@@ -33,6 +33,30 @@ export {
 export { buildVerification, coreChecks, type VerifyMeta } from "./verify";
 export { buildMarkdown, formatMoney } from "./report";
 export { clampInput, errorMessage, redactSecrets } from "./security";
+export {
+  BYOK_KEY_HEADER,
+  BYOK_MAX_KEY,
+  BYOK_MIN_KEY,
+  BYOK_LABEL,
+  BYOK_PROVIDERS,
+  BYOK_PROVIDER_HEADER,
+  byokEnv,
+  byokRequestHeaders,
+  clearStoredByok,
+  inferByokProvider,
+  isByokProvider,
+  loadStoredByok,
+  readByok,
+  saveStoredByok,
+  validateByok,
+  type ByokConfig,
+  type ByokProvider,
+  type ByokResult,
+  type ByokValidation,
+  type HeaderSource,
+  type StorageLike,
+  type StoredByok,
+} from "./byok";
 export { extractJsonObject } from "./json";
 export { normalizeCritique, normalizeHeal, normalizeScan, normalizeVerifyNotes } from "./normalize";
 export {

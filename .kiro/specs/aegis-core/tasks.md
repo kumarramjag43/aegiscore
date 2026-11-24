@@ -94,7 +94,7 @@ All tasks below are **complete** and verified. Commands used for verification ar
 ## 8. Verification
 
 - [x] **T8.1** `npm run typecheck` → 0 errors (core, both apps).
-- [x] **T8.2** `npm test` → 25/25 core tests pass (32/32 after the Phase 2 upgrade).
+- [x] **T8.2** `npm test` → 25/25 core tests pass (32/32 after the Phase 2 upgrade, 40/40 after the BYOK + negative-case upgrade).
 - [x] **T8.3** `npm run build` → both Next.js apps compile and prerender.
 - [x] **T8.4** SSE verified with `curl -N` against both apps (full event sequence).
 - [x] **T8.5** Browser run of both UIs with zero console errors and zero failed requests.

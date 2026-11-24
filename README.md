@@ -2,6 +2,13 @@
 
 **One skeleton. Two products. Zero duplicated agent logic.**
 
+> **Zero-setup sandbox, optional live LLM.** Both apps run the full four-agent pipeline with
+> no API key at all — that is the default. A judge who wants real model output can paste a
+> `GEMINI_API_KEY`, `OPENAI_API_KEY` or `GROQ_API_KEY` into the "Use a live LLM key (optional)"
+> bar in either UI; it is used for that browser session only, travels as request headers
+> (`x-aegis-api-key` / `x-aegis-provider`), and the header badge flips from *Sandbox* to
+> *Live · Gemini / OpenAI / Groq* immediately. Nothing is stored server-side.
+
 ## ▶ Live demo
 
 | Surface | Live URL | Status |
@@ -35,7 +42,7 @@ contains a prompt, a detector, or a pipeline stage. Delete one app and the other
 
 ![status](https://img.shields.io/badge/build-passing-34d399)
 ![types](https://img.shields.io/badge/typecheck-0%20errors-22d3ee)
-![tests](https://img.shields.io/badge/tests-32%20passing-a78bfa)
+![tests](https://img.shields.io/badge/tests-40%20passing-a78bfa)
 ![providers](https://img.shields.io/badge/providers-OpenAI%20%C2%B7%20Groq%20%C2%B7%20Gemini%20%C2%B7%20Claude-fbbf24)
 ![mode](https://img.shields.io/badge/sandbox-no%20API%20key%20required-94a3b8)
 ![deploy](https://img.shields.io/badge/Vercel%20%2B%20Render-one--click%20configs-0ea5e9)
@@ -137,6 +144,22 @@ Supported out of the box, all via plain `fetch` (no SDKs):
 
 Force one with `AEGIS_PROVIDER=gemini` (or `demo` to always use the sandbox). The header badge
 in both apps always tells you which provider is live.
+
+### …or bring your own key in the browser (BYOK, no redeploy)
+
+Click **Use a live LLM key (optional)** under the header in either app, pick a provider, paste a
+key, hit **Use key**. That key:
+
+- lives in `sessionStorage` for that tab only — never in a cookie, never on the server, never logged;
+- is sent as `x-aegis-api-key` + `x-aegis-provider` on the audit request, where the route turns it
+  into an env overlay that outranks the server's own `DEMO_MODE` / `AEGIS_PROVIDER` settings;
+- is registered for redaction before it can reach a log line, stream frame or error message
+  (`redactSecrets(text, maxLength, [key])` in `packages/aegis-core/src/security.ts`);
+- degrades instead of failing: if the provider rejects it, the run continues on the deterministic
+  sandbox and says so in the stream.
+
+Clearing the key returns both apps to the sandbox instantly. Server-side keys from `.env` still work
+exactly as before — BYOK is additive, not a replacement.
 
 ---
 
@@ -268,7 +291,7 @@ aegiscore/
 │   │   └── packs/
 │   │       ├── code-security/      # detectors, repairs, prompts, 3 presets
 │   │       └── contract-fraud/     # signals, clause parser, counter-draft, 3 presets
-│   └── test/pipeline.test.ts       # 32 tests, no network
+│   └── test/pipeline.test.ts       # 40 tests, no network
 ├── apps/portal/                    # :3000  launcher + interactive architecture map
 ├── apps/codemedic-ai/              # :3001  DevSecOps console
 ├── apps/lexguard-ai/               # :3002  executive audit desk
@@ -309,7 +332,7 @@ One new directory, one export line. No changes to `pipeline.ts`, `scoring.ts`, `
 
 ```bash
 npm run typecheck   # 0 errors — core, portal, both products
-npm test            # 32/32 passing
+npm test            # 40/40 passing
 npm run build       # all three Next.js apps compile and prerender
 npm run verify      # all of the above, in one command
 ```
@@ -374,20 +397,53 @@ Full walkthrough, root directories and health-check contract: [DEPLOY.md](./DEPL
   200 000) before any model call.
 - Uploads are validated for extension, byte size, NUL bytes and BOM, and filenames are
   sanitised before they are used as a download attribute.
-- Keys live in `process.env` only. `/api/health` exposes provider *identity*, never credentials.
+- Keys live in `process.env` only, or — for a browser BYOK key — in that tab's `sessionStorage`.
+  `/api/health` exposes provider *identity*, never credentials, and a BYOK key is never written
+  server-side, logged, or echoed back.
+- A request-supplied BYOK key is validated (length, printable ASCII, known provider), then registered
+  for exact-value redaction before the pipeline runs, so neither a provider error nor a stream frame
+  can contain it.
 - Provider errors pass through `redactSecrets` before reaching the UI, so an upstream error
   cannot echo a key back to the browser.
 - User content is fenced as data in every prompt; domain rules live in the system prompt.
 - The UI never uses `dangerouslySetInnerHTML`; code and documents render as text.
 - No persistence, no filesystem writes, no `child_process`, no telemetry.
 
-## Honest limitations
+## Design philosophy & roadmap
 
-- Detectors are rule-based and deliberately explainable; they are not a substitute for a
-  semantic scanner or a lawyer. The report says so, in the report.
-- Runs are request-scoped: there is no history, no database, no auth. A public deployment is
-  a demo surface, not a multi-tenant service.
-- Streaming is stage-level, not token-level.
+**Stateless by construction — that is a feature, not a gap.** An audit is a pure function:
+input text in, structured report out, nothing retained. No database, no job queue, no stored
+customer documents, no BYOK key at rest. That is why the privacy answer is a single sentence —
+*there is nothing to retain* — and why a judge can paste a real contract or a real snippet into a
+public URL without wondering where it went. Anything stateful (history, accounts, sharing) is
+deliberately deferred to the roadmap rather than half-built.
+
+**Explainable over opaque.** Detectors are deterministic rules with cited evidence and a stated
+remediation, not a semantic classifier guessing at intent. A finding you cannot explain is a finding
+you cannot defend in an audit, so every alert carries the exact line or clause that triggered it.
+The consequence is honest: the sandbox will miss novel vulnerability classes a semantic scanner
+might catch, and the report says so in its own notes. The Verifier exists precisely to keep that
+honesty enforceable — it re-checks the healer's output and fails the run when a fix is incomplete
+(two tests in `packages/aegis-core/test/pipeline.test.ts` prove this, plus two more that prove clean
+code and a fair contract raise **zero** critical alerts).
+
+**One core, two products, no forks.** Domain knowledge lives in packs; the pipeline, providers,
+verification, redaction and streaming live once in `packages/aegis-core`. That is what makes a third
+domain cheap, and it is why the BYOK path above needed one helper module rather than two UI
+implementations of key handling.
+
+Roadmap, in the order we would ship it:
+
+| Next | Why it matters | Where it lands |
+| --- | --- | --- |
+| Token-level streaming | Live reasoning feels faster than stage-level steps | `providers/*` + `sse.ts` |
+| Audit history (opt-in, encrypted) | Teams need a trail; single-shot demos do not | new `packages/aegis-store` |
+| Third domain pack | Proves the Skeleton claim beyond two products | `packs/<domain>` |
+| Detector pack versioning | Rule sets drift; findings must be reproducible | `packs/*/manifest.json` |
+| Self-hosted model support | Air-gapped audits with no vendor key | `providers/openai.ts` (base URL already configurable) |
+
+Known limits, stated plainly: the sandbox is rule-based (not a semantic scanner or a lawyer), runs
+are request-scoped by design, and streaming is stage-level today.
 
 ---
 

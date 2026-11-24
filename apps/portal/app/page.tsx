@@ -72,7 +72,7 @@ export default async function PortalPage() {
     { label: "detectors", value: String(DETECTORS.length), note: "code-security pack" },
     { label: "legal signals", value: String(LEGAL_SIGNALS.length), note: "contract-fraud pack" },
     { label: "domain packs", value: String(Object.keys(PACKS).length), note: "registered in one map" },
-    { label: "unit tests", value: "32", note: "offline, deterministic" },
+    { label: "unit tests", value: "40", note: "offline, deterministic" },
   ];
 
   return (
@@ -223,7 +223,7 @@ export default async function PortalPage() {
                 <Proof text="Neither app contains a prompt, a detector, or a pipeline stage — they import the core and render its typed events." />
                 <Proof text="Sandbox analyzers run the same pipeline with no API key, so judges see real output before configuring anything." />
                 <Proof text="The verifier is deterministic code that re-runs the detectors on the patch; it can fail, which is why &quot;verified&quot; means something." />
-                <Proof text="32 offline tests cover both domains end to end, including the fallback path when a live model returns prose." />
+                <Proof text="40 offline tests cover both domains end to end: presets, clean-input false-positive guards, verifier rejection of broken fixes, and the fallback path when a live model returns prose." />
               </ul>
             </div>
             <pre className="glass overflow-x-auto p-4 font-mono text-[10.5px] leading-relaxed text-slate-300">

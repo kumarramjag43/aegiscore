@@ -174,6 +174,6 @@ the portal's status pills. It returns provider **identity only**, never secrets:
 
 ```bash
 npm ci          # or npm install
-npm run verify  # typecheck (4 workspaces) + 32 tests + 3 production builds
+npm run verify  # typecheck (4 workspaces) + 40 tests + 3 production builds
 npm run start   # serves portal :3000, CodeMedic :3001, LexGuard :3002
 ```

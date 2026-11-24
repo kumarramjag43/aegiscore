@@ -12,16 +12,27 @@ const SECRET_PATTERNS: RegExp[] = [
   /Bearer\s+[A-Za-z0-9._-]{12,}/gi,
 ];
 
-/** Remove credential-looking material and bound the length of error text. */
-export function redactSecrets(text: string, maxLength = 400): string {
+/**
+ * Remove credential-looking material and bound the length of error text.
+ * `extra` holds request-scoped secrets (a BYOK key) whose exact value must also
+ * disappear — pattern matching alone cannot know an arbitrary key's shape.
+ */
+export function redactSecrets(
+  text: string,
+  maxLength = 400,
+  extra: readonly string[] = [],
+): string {
   let output = text;
+  for (const value of extra) {
+    if (value.length >= 8) output = output.split(value).join("[redacted]");
+  }
   for (const pattern of SECRET_PATTERNS) output = output.replace(pattern, "[redacted]");
   return output.length > maxLength ? `${output.slice(0, maxLength - 1)}…` : output;
 }
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof Error) return redactSecrets(error.message || error.name);
-  return redactSecrets(String(error));
+export function errorMessage(error: unknown, extra: readonly string[] = []): string {
+  if (error instanceof Error) return redactSecrets(error.message || error.name, 400, extra);
+  return redactSecrets(String(error), 400, extra);
 }
 
 export interface ClampResult {
