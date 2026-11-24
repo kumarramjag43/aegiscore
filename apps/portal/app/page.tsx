@@ -21,8 +21,12 @@ import { probeEngine, type EngineStatus } from "@/lib/status";
 // Status pills are live probes; never cache a stale engine state in the HTML.
 export const dynamic = "force-dynamic";
 
-const CODEMEDIC_URL = process.env.NEXT_PUBLIC_CODEMEDIC_URL ?? "http://localhost:3001";
-const LEXGUARD_URL = process.env.NEXT_PUBLIC_LEXGUARD_URL ?? "http://localhost:3002";
+// Server-side probe targets: a plain env var wins so the URL can change without
+// a rebuild, then the public (build-time) one, then local development.
+const CODEMEDIC_URL =
+  process.env.CODEMEDIC_URL ?? process.env.NEXT_PUBLIC_CODEMEDIC_URL ?? "http://localhost:3001";
+const LEXGUARD_URL =
+  process.env.LEXGUARD_URL ?? process.env.NEXT_PUBLIC_LEXGUARD_URL ?? "http://localhost:3002";
 
 const STAGE_CARDS = [
   {

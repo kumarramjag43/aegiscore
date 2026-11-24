@@ -2,6 +2,22 @@
 
 **One skeleton. Two products. Zero duplicated agent logic.**
 
+## ▶ Live demo
+
+| Surface | Live URL | Deploy target (Root Directory) |
+| --- | --- | --- |
+| 🛰️ **AegisCore Portal** | `https://<portal>.vercel.app` | `apps/portal` |
+| 🩺 **CodeMedic AI** | `https://<codemedic>.vercel.app` | `apps/codemedic-ai` |
+| ⚖️ **LexGuard AI** | `https://<lexguard>.vercel.app` | `apps/lexguard-ai` |
+
+> **Deployment status:** this repository ships the deploy configuration, not a hosted URL yet.
+> Publish all three surfaces in ~4 minutes — one command:
+> `./scripts/deploy-vercel.sh` (after `vercel login`), or the
+> [three-click path in DEPLOY.md](DEPLOY.md#publish-in-three-clicks).
+> The script prints a ready-to-paste block; replace the three placeholders above with it.
+> Until then, `npm install && npm run dev` gives identical behaviour on ports 3000/3001/3002 —
+> every surface runs the real pipeline in sandbox mode, with **no API key**.
+
 AegisCore is a modular, reusable multi-agent audit engine. It reads an artefact, finds what
 can hurt you, scores it, rewrites it, and then *proves the rewrite is safe* — and it does that
 for two completely different domains without knowing anything about either one.

@@ -90,6 +90,34 @@ Known gotchas:
 
 ## 4. Lessons Learned (newest first)
 
+### 2026-11-24 — Production readiness pass (deploy, submission)
+
+**Facts**
+- No `VERCEL_TOKEN`, no `RENDER_API_KEY`, no `~/.vercel` session in this container,
+  and `api.vercel.com` answers 403 unauthenticated. Cloud deploys therefore need a
+  human login; nothing can be published automatically from here.
+- `scripts/deploy-vercel.sh` is the single entry point: links `aegis-codemedic`,
+  `aegis-lexguard`, `aegis-portal`, deploys prod, sets the portal's
+  `CODEMEDIC_URL`/`LEXGUARD_URL` (+ `NEXT_PUBLIC_*` mirrors), prints a paste block.
+  It fails fast when unauthenticated instead of prompting.
+- Portal probes read `CODEMEDIC_URL`/`LEXGUARD_URL` first, then the public
+  `NEXT_PUBLIC_*` mirrors, then localhost — so a URL change needs no rebuild.
+- Vercel deploy button URL params are `repository-url`, `project-name`,
+  `repository-name`, `env`, `envDescription`, `envDefaults`, `products`,
+  integration ids... There is **no documented `root-directory` param**, so a
+  monorepo cannot be one-click imported per app; the Root Directory field in the
+  New Project form is the only path. Do not invent the param.
+- `vercel.com/docs/<page>.md` and `vercel.com/docs/llms.txt` serve markdown to
+  curl — use those instead of scraping the JS-rendered HTML.
+
+**Lessons**
+- Judge-facing README numbers must be measured, not estimated: quote the CDP
+  timings (2.4 s paced, ~250 ms compute) and the real check counts per preset.
+- A "Live demo" table with honest placeholders + the exact deploy path beats
+  URLs that 404. Say plainly that the repo ships config, not hosting.
+- Social copy has hard character limits. Count with `len()` before shipping
+  (the first X draft was 319 chars).
+
 ### 2026-11-24 — AegisCore Phase 2 (portal, uploads, PDF, deploy)
 
 **Project facts (durable, verified)**
@@ -258,6 +286,8 @@ Known gotchas:
   public deployment was performed from this environment.
 - Print layout verified in Chromium only; Firefox/Safari `@page` handling is
   untested.
+- No public deployment exists yet: Vercel/Render both require an interactive
+  login or token that is not available in this environment.
 
 - Does the OpenHands Cloud UI import `.openhands/mcp.json` directly, or must
   servers be re-entered per settings key? Unverified — no authenticated client

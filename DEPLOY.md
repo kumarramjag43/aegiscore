@@ -12,6 +12,34 @@ four-agent pipeline, so judges get a fully working audit with **no API keys**.
 
 ---
 
+<a id="publish-in-three-clicks"></a>
+## Publish in three clicks (Vercel UI)
+
+1. **Import** `kumarramjag43/aegiscore` three times (Vercel → *Add New… → Project*),
+   and in each import set only **Root Directory**: `apps/codemedic-ai`,
+   `apps/lexguard-ai`, `apps/portal`.
+2. **On the portal project** add two variables (Production): `CODEMEDIC_URL` and
+   `LEXGUARD_URL`, set to the two product URLs Vercel gave you.
+3. **Redeploy** the portal (`Deployments → ⋯ → Redeploy`). The launch buttons and
+   the live status pills now resolve to the real apps.
+
+No keys, no database, no build-time secrets.
+
+## Publish in one command (CLI)
+
+```bash
+vercel login                     # once, or: export VERCEL_TOKEN=...
+./scripts/deploy-vercel.sh       # deploys codemedic → lexguard → portal, wires env, prints URLs
+```
+
+The script links each app to a stable project name (`aegis-codemedic`,
+`aegis-lexguard`, `aegis-portal`), deploys to production, sets the portal's
+`CODEMEDIC_URL` / `LEXGUARD_URL` (plus the `NEXT_PUBLIC_*` mirrors) and prints a
+ready-to-paste block for the README. It exits immediately with a clear message if
+you are not authenticated — it never hangs on a prompt.
+
+---
+
 ## Option A — Vercel (three projects, one repo)
 
 Each app ships its own `vercel.json` (framework, security headers, `no-store` on
@@ -37,7 +65,10 @@ the repo root and each project builds only its own workspace.
    DEMO_MODE=true            # force sandbox; omit to auto-detect keys
    GEMINI_API_KEY=...        # or OPENAI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY
 
-   # portal only — point the launch buttons at the deployed apps
+   # portal only — point status probes and launch buttons at the deployed apps
+   CODEMEDIC_URL=https://<codemedic-project>.vercel.app
+   LEXGUARD_URL=https://<lexguard-project>.vercel.app
+   # optional build-time mirrors, used by the cross-app links inside each product
    NEXT_PUBLIC_CODEMEDIC_URL=https://<codemedic-project>.vercel.app
    NEXT_PUBLIC_LEXGUARD_URL=https://<lexguard-project>.vercel.app
    ```
