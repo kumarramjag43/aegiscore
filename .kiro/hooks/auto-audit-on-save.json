@@ -1,0 +1,22 @@
+{
+  "name": "AegisCore — audit the skeleton on save",
+  "description": "Whenever a core, pack, or app source file is saved, re-run the type checker and the deterministic pipeline test suite so the Skeleton Crew contract (one core, two products) cannot silently break.",
+  "version": "1",
+  "enabled": true,
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "packages/aegis-core/src/**/*.ts",
+      "packages/aegis-core/test/**/*.ts",
+      "apps/codemedic-ai/**/*.ts",
+      "apps/codemedic-ai/**/*.tsx",
+      "apps/lexguard-ai/**/*.ts",
+      "apps/lexguard-ai/**/*.tsx"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run audit:quick",
+    "timeout": 180
+  }
+}

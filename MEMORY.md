@@ -47,6 +47,10 @@ outranks general defaults. If a rule here conflicts with a habit, this file wins
    cap heaps; close browsers when done; no unbounded loops or buffering.
 8. **Clean up after yourself.** Remove scratch files and background servers you
    started; leave the tree as you found it plus the intended change.
+9. **This repo ships a product now.** `packages/aegis-core` is the only
+   implementation of the four-stage pipeline; apps may not contain stages,
+   prompts, or detectors. Before any change run
+   `npm run typecheck && npm test` (see `.kiro/steering/architecture-rules.md`).
 
 ---
 
@@ -85,6 +89,60 @@ Known gotchas:
 ---
 
 ## 4. Lessons Learned (newest first)
+
+### 2026-11-24 — AegisCore built (Kiroween Skeleton Crew)
+
+**Project facts (durable, verified)**
+- Monorepo: npm workspaces `packages/aegis-core` + `apps/{codemedic-ai,lexguard-ai}`.
+  One lockfile at the root; `npm install && npm run dev` starts both apps
+  (3001 / 3002) via `concurrently`.
+- The reusable skeleton is the *pipeline*, not the UI: `DomainPack` supplies
+  presets, agent descriptors, prompts, deterministic analyzers and verifiers.
+  Core never branches on domain.
+- Verification is deterministic code, not a model call — that is why
+  "verified" means something and why the demo works with no API key.
+- Tests: `node:test` + `tsx`, 25 cases, `pace: 0` + injectable `llm` so the real
+  pipeline runs offline in ~0.3 s.
+
+**Gotchas that cost time**
+- Next 15 + npm workspaces: `transpilePackages: ["@aegiscore/core"]` is required
+  or the app build fails on the core's TypeScript sources. Also set
+  `experimental.externalDir: true` for files outside the app root.
+- Next only reads `.env` from the app directory; loading the monorepo-root `.env`
+  needs `@next/env`'s `loadEnvConfig(root, true)` in `next.config.ts`, guarded so
+  an existing `process.env` value wins.
+- `@esbuild/linux-x64` ships the binary in the package, so `tsx` works even when
+  npm reports a blocked `esbuild` postinstall. Verify with `npx tsx --version`
+  instead of trusting the install log.
+- The Next dev overlay's "1 Issue" badge was a missing `/favicon.ico` (404).
+  `app/icon.svg` in each app fixes it; do not ignore that badge.
+- In a React 19 client component, an async event handler that mutates state is
+  fine, but `AbortController` must be stored in a ref and cleared in `finally`,
+  or a cancelled run leaves the UI stuck on "running".
+- Regex lesson (cost two debugging rounds): `\s*,\s*(?!auth)` still matches
+  `, authenticate` because `\s*` can match zero characters. Anchor the negative
+  lookahead on whitespace: `(?!\s*(?:auth|requireAuth))`.
+- A negative lookahead is not the only backtracking trap: lazy quantifiers in
+  `[\s\S]{0,120}?` will happily start a match earlier than expected. Assert on
+  the matched substring in tests, not just on "a match exists".
+- Clause parsing: invoice line items (`1. Sensor — qty 12 x $1,850.00 = $22,200`)
+  look exactly like numbered headings. Reject headings containing `=` or
+  `qty N x`, otherwise the whole invoice collapses into one giant "clause 3".
+- Sentence extraction must not split on the period in `2.3`; require
+  `.` + whitespace + upper-case before treating it as a boundary.
+- Don't prefix generated text that is later asserted to be present verbatim
+  (a `| ` quote marker breaks `includes`). Compare line-trimmed content, or
+  emit the block unindented.
+
+**Product decisions worth keeping**
+- Risk score = `top + 0.25 × rest`, capped at 100. Model self-scores are kept as
+  `criticScore` and never drive the gauge.
+- Sandbox analyzers double as the verification oracle, so demo output is not
+  hand-written: the patch is re-scanned and must come back clean.
+- Two apps must not share a visual language — only semantic tokens
+  (`SEVERITY_STYLE`, `BAND_LABEL`, `formatMoney`). CodeMedic is cyber-dark,
+  LexGuard is an executive paper desk.
+
 
 ### 2026-11-22 — GitHub remote: connected, push blocked by token scope
 - `origin` = `https://github.com/kumarramjag43/openhands-super-workspace.git`

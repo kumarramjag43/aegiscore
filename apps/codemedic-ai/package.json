@@ -1,0 +1,29 @@
+{
+  "name": "@aegis/codemedic-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CodeMedic AI — autonomous code and API security auditor powered by @aegiscore/core.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aegiscore/core": "*",
+    "lucide-react": "0.577.0",
+    "next": "15.5.29",
+    "react": "19.1.10",
+    "react-dom": "19.1.10"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "autoprefixer": "10.7.0",
+    "postcss": "8.5.33",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.9.3"
+  }
+}
