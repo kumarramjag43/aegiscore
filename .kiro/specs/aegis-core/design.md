@@ -230,3 +230,84 @@ interface LlmClient {
 | Rule-based detectors rather than embeddings | Explainable, fast, deterministic, zero cost | Narrower coverage than a semantic scanner |
 | Compounding risk formula | Rewards breadth of findings | Saturation at 100 for multi-critical inputs |
 | No persistence | Zero setup friction for judges | Runs cannot be revisited by URL |
+
+---
+
+## 13. Phase 2 — delivery surfaces
+
+```mermaid
+flowchart TB
+  subgraph portal["apps/portal :3000 (launcher)"]
+    SP["page.tsx · server component<br/>probes both /api/health"]
+    SD["SkeletonDiagram · client SVG<br/>hover / focus / tap"]
+    SP --> SD
+  end
+  subgraph apps["products"]
+    CM["CodeMedic AI :3001"]
+    LG["LexGuard AI :3002"]
+  end
+  SP -- "fetch, 1.5 s timeout" --> CM
+  SP -- "fetch, 1.5 s timeout" --> LG
+  SD -- "NEXT_PUBLIC_*_URL" --> CM
+  SD -- "NEXT_PUBLIC_*_URL" --> LG
+  CORE["@aegiscore/core<br/>PACKS · DETECTORS · LEGAL_SIGNALS"] --> SP
+```
+
+The portal is the third consumer of the skeleton: it renders the same `PACKS` registry, the
+same detector inventory and the same signal inventory that the products execute. Nothing on
+the page is a hard-coded marketing number.
+
+### File intake
+
+```
+File (drag | pick)
+   └─ readUploadedText(file, { extensions, maxBytes })        packages/aegis-core/src/client.ts
+        ├─ extension allow-list      → reject: "Unsupported file type. Accepted: …"
+        ├─ size 0                    → reject: "That file is empty."
+        ├─ size > limit              → reject: "File is X — the limit is Y."
+        ├─ NUL byte present          → reject: "That looks like a binary file…"
+        ├─ strip BOM, trim check     → reject: "That file has no readable content."
+        └─ ok → { name, text, bytes } → editor + document label
+```
+
+The validation lives in the core so both apps cannot drift; the drop zone is styled
+independently (cyan console vs amber desk) because the two products must not share a look.
+
+### Print pipeline
+
+| Layer | Mechanism |
+| --- | --- |
+| Screen chrome | `print:hidden` on header, panels, tabs, footer, background layers |
+| Printable artefact | `PrintSheet` rendered with `hidden print:block`, black-on-white |
+| Page setup | `@page { size: A4; margin: 14mm }` in the app stylesheet |
+| Colour fidelity | `print-color-adjust: exact` so the paper tones survive Chrome's print engine |
+| Control | Header button, disabled until a signed report exists |
+
+The print sheet is generated from the `AuditReport`, not by screenshotting the dashboard, so
+the PDF contains the full findings table and the entire counter-proposal even when those
+panels are scrolled out of view.
+
+### Deployment topology
+
+```mermaid
+flowchart LR
+  REPO["monorepo<br/>package-lock at root"]
+  REPO --> V1["Vercel project<br/>root: apps/portal"]
+  REPO --> V2["Vercel project<br/>root: apps/codemedic-ai"]
+  REPO --> V3["Vercel project<br/>root: apps/lexguard-ai"]
+  REPO --> R["render.yaml<br/>3 web services, rootDir ."]
+  V1 -. "NEXT_PUBLIC_* URLs" .-> V2
+  V1 -. "NEXT_PUBLIC_* URLs" .-> V3
+```
+
+Provider precedence in production:
+
+```
+DEMO_MODE truthy ────────────────► sandbox (always)
+AEGIS_PROVIDER=<id> ─────────────► that provider, if configured
+first configured of ─────────────► openai → gemini → groq → anthropic
+nothing configured ──────────────► sandbox
+```
+
+`/api/health` reports the resolution result (`active.id`, `mode`, `demoMode`) so the portal and
+the product badges always agree with the server.

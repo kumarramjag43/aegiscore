@@ -12,16 +12,19 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "dev": "concurrently -k -n codemedic,lexguard -c cyan,magenta \"npm:dev:codemedic\" \"npm:dev:lexguard\"",
+    "dev": "concurrently -k -n portal,codemedic,lexguard -c violet,cyan,magenta \"npm:dev:portal\" \"npm:dev:codemedic\" \"npm:dev:lexguard\"",
+    "dev:portal": "npm run dev --workspace @aegis/portal",
     "dev:codemedic": "npm run dev --workspace @aegis/codemedic-ai",
     "dev:lexguard": "npm run dev --workspace @aegis/lexguard-ai",
-    "build": "npm run build --workspace @aegiscore/core && npm run build --workspace @aegis/codemedic-ai && npm run build --workspace @aegis/lexguard-ai",
-    "start": "concurrently -k -n codemedic,lexguard -c cyan,magenta \"npm:start:codemedic\" \"npm:start:lexguard\"",
+    "build": "npm run build --workspace @aegiscore/core && npm run build --workspace @aegis/portal && npm run build --workspace @aegis/codemedic-ai && npm run build --workspace @aegis/lexguard-ai",
+    "start": "concurrently -k -n portal,codemedic,lexguard -c violet,cyan,magenta \"npm:start:portal\" \"npm:start:codemedic\" \"npm:start:lexguard\"",
+    "start:portal": "npm run start --workspace @aegis/portal",
     "start:codemedic": "npm run start --workspace @aegis/codemedic-ai",
     "start:lexguard": "npm run start --workspace @aegis/lexguard-ai",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspace @aegiscore/core",
     "audit:quick": "npm run typecheck && npm run test",
+    "verify": "npm run typecheck && npm run test && npm run build",
     "clean": "rm -rf packages/aegis-core/dist apps/*/.next"
   },
   "devDependencies": {

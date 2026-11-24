@@ -8,7 +8,11 @@ import {
   detectHits,
   diffDocuments,
   extractJsonObject,
+  formatBytes,
+  guessFileName,
+  isDemoMode,
   normalizeCritique,
+  readUploadedText,
   parseClauses,
   resolveLlmClient,
   runAudit,
@@ -312,5 +316,71 @@ describe("pipeline streaming", () => {
         .join("");
       assert.doesNotThrow(() => JSON.parse(data));
     }
+  });
+});
+
+/* ------------------------------------------------------- uploads & demo mode */
+
+describe("file intake", () => {
+  const RULE = { extensions: [".ts", ".py"], maxBytes: 4096 };
+
+  it("sanitises hostile names and forces an extension", () => {
+    const escaped = guessFileName("../../etc/passwd", ".ts");
+    assert.ok(!escaped.includes("/"), "path separators must not survive");
+    assert.ok(escaped.endsWith(".ts"));
+
+    assert.equal(guessFileName("api/users.js", ".ts"), "api-users.js");
+    assert.equal(guessFileName("   ", ".md"), "aegis-export.md");
+    assert.equal(guessFileName("x".repeat(200), ".ts").length <= 99, true);
+  });
+
+  it("formats byte counts for the UI", () => {
+    assert.equal(formatBytes(512), "512 B");
+    assert.equal(formatBytes(2048), "2.0 KB");
+    assert.equal(formatBytes(3 * 1024 * 1024), "3.0 MB");
+  });
+
+  it("reads an accepted text file and strips a BOM", async () => {
+    const result = await readUploadedText(new File(["\uFEFFconst a = 1;"], "route.ts"), RULE);
+    assert.equal(result.ok, true);
+    assert.equal(result.text, "const a = 1;");
+    assert.equal(result.name, "route.ts");
+  });
+
+  it("rejects the wrong extension, empty files, binaries and oversize uploads", async () => {
+    const wrongType = await readUploadedText(new File(["MZ\u0000"], "tool.exe"), RULE);
+    assert.equal(wrongType.ok, false);
+    assert.match(wrongType.error ?? "", /Unsupported file type/);
+
+    const empty = await readUploadedText(new File([], "empty.ts"), RULE);
+    assert.equal(empty.ok, false);
+
+    const binary = await readUploadedText(new File(["a\u0000b"], "blob.ts"), RULE);
+    assert.equal(binary.ok, false);
+    assert.match(binary.error ?? "", /binary/);
+
+    const huge = await readUploadedText(new File(["a".repeat(5000)], "big.ts"), RULE);
+    assert.equal(huge.ok, false);
+    assert.match(huge.error ?? "", /limit is/);
+  });
+});
+
+describe("demo mode", () => {
+  it("parses the switch conservatively", () => {
+    assert.equal(isDemoMode({ DEMO_MODE: "true" }), true);
+    assert.equal(isDemoMode({ DEMO_MODE: "1" }), true);
+    assert.equal(isDemoMode({ DEMO_MODE: " ON " }), true);
+    assert.equal(isDemoMode({ DEMO_MODE: "false" }), false);
+    assert.equal(isDemoMode({}), false);
+  });
+
+  it("pins the sandbox even when a key is present", () => {
+    const client = resolveLlmClient({ DEMO_MODE: "true", OPENAI_API_KEY: "sk-not-a-real-key" }, codeSecurityPack);
+    assert.equal(client.mode, "sandbox");
+  });
+
+  it("uses the live provider once demo mode is off", () => {
+    const client = resolveLlmClient({ OPENAI_API_KEY: "sk-not-a-real-key" }, codeSecurityPack);
+    assert.equal(client.mode, "live");
   });
 });

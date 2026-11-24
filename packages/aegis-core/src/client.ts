@@ -89,3 +89,83 @@ export async function copyText(value: string): Promise<boolean> {
     return false;
   }
 }
+
+/* ------------------------------------------------------------- file uploads */
+
+export interface UploadRule {
+  /** Lower-case extensions, including the dot: `[".ts", ".py"]`. */
+  extensions: string[];
+  maxBytes?: number;
+}
+
+export interface UploadedText {
+  ok: boolean;
+  name: string;
+  text: string;
+  bytes: number;
+  error?: string;
+}
+
+export const DEFAULT_UPLOAD_LIMIT = 512_000;
+
+/**
+ * Removes path separators and control characters, forces a single extension,
+ * and falls back when the candidate is not a usable file name. The result is
+ * safe to use as a `download` attribute.
+ */
+export function guessFileName(candidate: string, fallbackExtension: string): string {
+  const cleaned = candidate
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 96);
+  if (cleaned.length === 0) return `aegis-export${fallbackExtension}`;
+  return /\.[a-z0-9]{1,5}$/i.test(cleaned) ? cleaned : `${cleaned}${fallbackExtension}`;
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Validates and reads a dropped or picked text file. Every rejection returns a
+ * human sentence instead of throwing, so callers can render it verbatim.
+ */
+export async function readUploadedText(file: File, rule: UploadRule): Promise<UploadedText> {
+  const name = guessFileName(file.name, "");
+  const bytes = file.size;
+  const limit = rule.maxBytes ?? DEFAULT_UPLOAD_LIMIT;
+  const extension = /\.[a-z0-9]{1,5}$/i.exec(name)?.[0].toLowerCase() ?? "";
+
+  if (extension.length === 0 || !rule.extensions.includes(extension)) {
+    return {
+      ok: false,
+      name,
+      text: "",
+      bytes,
+      error: `Unsupported file type. Accepted: ${rule.extensions.join(", ")}.`,
+    };
+  }
+  if (bytes === 0) return { ok: false, name, text: "", bytes, error: "That file is empty." };
+  if (bytes > limit) {
+    return {
+      ok: false,
+      name,
+      text: "",
+      bytes,
+      error: `File is ${formatBytes(bytes)} — the limit is ${formatBytes(limit)}.`,
+    };
+  }
+
+  const raw = (await file.text()).replace(/^\uFEFF/, "");
+  if (raw.includes("\u0000")) {
+    return { ok: false, name, text: "", bytes, error: "That looks like a binary file, not text." };
+  }
+  if (raw.trim().length === 0) {
+    return { ok: false, name, text: "", bytes, error: "That file has no readable content." };
+  }
+
+  return { ok: true, name, text: raw, bytes };
+}

@@ -8,6 +8,7 @@ import {
   Landmark,
   Loader2,
   Play,
+  Printer,
   Receipt,
   Scale,
   Sparkles,
@@ -27,6 +28,8 @@ import { AuditTimeline } from "./AuditTimeline";
 import { CounterDraft } from "./CounterDraft";
 import { ExposurePanel } from "./ExposurePanel";
 import { ReportPanel } from "./ReportPanel";
+import { FileDrop } from "./FileDrop";
+import { PrintSheet } from "./PrintSheet";
 import { RiskHeatmap } from "./RiskHeatmap";
 import type { LogLine, StageState } from "./types";
 
@@ -41,6 +44,8 @@ const EMPTY_STAGES: Record<AgentStage, StageState> = {
 };
 
 const CODEMEDIC_URL = process.env.NEXT_PUBLIC_CODEMEDIC_URL ?? "http://localhost:3001";
+
+const INSTRUMENT_EXTENSIONS = [".txt", ".md", ".csv", ".json"];
 
 const TABS: { id: Tab; label: string; icon: typeof Scale }[] = [
   { id: "audit", label: "Live audit", icon: Landmark },
@@ -68,6 +73,8 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<ProviderInfo | null>(null);
   const [tab, setTab] = useState<Tab>("audit");
+  const [file, setFile] = useState<{ name: string; bytes: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState<string | null>(first?.id ?? null);
 
   const logId = useRef(0);
@@ -227,7 +234,7 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
         aria-hidden
       />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-4 pb-8 pt-5 sm:px-6">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-4 pb-8 pt-5 sm:px-6 print:hidden">
         <header className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-amber-300/25 to-indigo-400/10 ring-1 ring-amber-300/40">
@@ -254,13 +261,35 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
                   ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
                   : "border-slate-500/30 bg-slate-500/10 text-slate-300",
               )}
-              title="Active model provider for this app"
+              title={
+                provider?.mode === "live"
+                  ? "Live model calls are enabled for this app"
+                  : "Deterministic Aegis sandbox — the full pipeline runs with no API key"
+              }
             >
               <span
                 className={cn("h-1.5 w-1.5 rounded-full", provider?.mode === "live" ? "bg-emerald-400" : "bg-slate-400")}
               />
-              {provider ? provider.label : "detecting provider…"}
+              {provider
+                ? provider.mode === "live"
+                  ? `Live · ${provider.label}`
+                  : "Live Sandbox Engine Active"
+                : "detecting provider…"}
             </span>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              disabled={!report}
+              title={
+                report
+                  ? "Open the print dialog and save the executive audit as PDF"
+                  : "Run an audit first — the printable file is generated from the signed report"
+              }
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-[10.5px] font-medium text-amber-200 transition-colors hover:border-amber-300/60 hover:bg-amber-300/15 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-slate-500"
+            >
+              <Printer className="h-3 w-3" />
+              Print / Save as PDF
+            </button>
             <a
               href={CODEMEDIC_URL}
               className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10.5px] text-slate-300 transition-colors hover:border-cyan-400/40 hover:text-cyan-200"
@@ -308,6 +337,31 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
                 placeholder="Paste the clauses, invoice or agreement you want reviewed…"
                 className="scroll-slim mt-1 h-[230px] w-full resize-none rounded-lg border border-white/10 bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-amber-300/50"
               />
+
+              <FileDrop
+                rule={{ extensions: INSTRUMENT_EXTENSIONS, maxBytes: 200_000 }}
+                accept={INSTRUMENT_EXTENSIONS.join(",")}
+                hint=".txt .md .csv .json · 200 KB"
+                file={file}
+                disabled={status === "running"}
+                onClear={() => setFile(null)}
+                onLoaded={(loaded) => {
+                  setFile({ name: loaded.name, bytes: loaded.bytes });
+                  setUploadError(null);
+                  setInput(loaded.text);
+                  setTitle(loaded.name.replace(/\.[^.]+$/, ""));
+                  setActivePreset(null);
+                  setReport(null);
+                  setError(null);
+                  setStatus("idle");
+                }}
+                onError={setUploadError}
+              />
+              {uploadError && (
+                <p className="mt-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-2.5 py-1.5 text-[10.5px] text-rose-200">
+                  {uploadError}
+                </p>
+              )}
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {presets.map((preset) => (
@@ -439,10 +493,12 @@ export function LexGuardWorkspace({ presets, agents, actionLabel, documentNoun }
           <span className="ml-auto">
             {provider?.mode === "live"
               ? "Live model calls enabled"
-              : "Sandbox mode — no API key required, deterministic results"}
+              : "Live Sandbox Engine — deterministic pipeline, no API key required"}
           </span>
         </footer>
       </div>
+
+      {report && <PrintSheet report={report} title={title} />}
     </div>
   );
 }

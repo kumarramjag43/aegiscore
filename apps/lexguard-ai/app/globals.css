@@ -46,3 +46,22 @@
     background: transparent;
   }
 }
+
+/* ---------------------------------------------------------------- print / PDF */
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Chrome renders dark surfaces as solid black bars without this. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

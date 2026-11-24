@@ -1,0 +1,82 @@
+# Render Blueprint — one-click deploy of all three AegisCore surfaces.
+#
+# Render dashboard → New → Blueprint → pick this repository → Apply.
+# Leave every `sync: false` variable empty to deploy in DEMO_MODE (no API key
+# needed); the sandbox engine runs the full pipeline deterministically.
+#
+# After the first deploy, copy the two product URLs into
+# NEXT_PUBLIC_CODEMEDIC_URL / NEXT_PUBLIC_LEXGUARD_URL on the portal service and
+# redeploy it, so the launch buttons and status pills point at the live apps.
+
+services:
+  - type: web
+    name: aegis-portal
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci --include=dev && npm run build --workspace @aegis/portal
+    startCommand: npm run start --workspace @aegis/portal
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DEMO_MODE
+        value: "true"
+      - key: NEXT_PUBLIC_CODEMEDIC_URL
+        sync: false
+      - key: NEXT_PUBLIC_LEXGUARD_URL
+        sync: false
+
+  - type: web
+    name: aegis-codemedic
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci --include=dev && npm run build --workspace @aegis/codemedic-ai
+    startCommand: npm run start --workspace @aegis/codemedic-ai
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DEMO_MODE
+        value: "true"
+      # Set any one of these to switch from the sandbox to a live model.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  - type: web
+    name: aegis-lexguard
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci --include=dev && npm run build --workspace @aegis/lexguard-ai
+    startCommand: npm run start --workspace @aegis/lexguard-ai
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DEMO_MODE
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

@@ -249,3 +249,83 @@ events, reports, or error messages.
 - R20 — Streaming token-level model output.
 
 These are explicitly **not** implemented; the design reserves seams for them.
+
+---
+
+## 8. Phase 2 — delivery surface
+
+### R21 — Unified launcher portal (Ubiquitous)
+
+**The system shall** serve a launch portal on port 3000 that explains the single-core
+architecture and links to both products, and **the portal shall** read the product URLs from
+`NEXT_PUBLIC_CODEMEDIC_URL` and `NEXT_PUBLIC_LEXGUARD_URL` with localhost defaults.
+
+*Acceptance criteria*
+
+- The portal renders with no environment variables set (localhost defaults).
+- Every figure on the page (detector count, signal count, pack count) is read from
+  `@aegiscore/core`, never hard-coded in the portal.
+- The architecture diagram responds to hover, keyboard focus, and tap.
+- Status pills probe each app's `/api/health` with a timeout and degrade to `offline`.
+
+### R22 — Real file intake (Event-driven)
+
+**WHEN** a user drops or picks a file, **the system shall** validate the extension, the byte
+size, and the encoding before loading it, and **the system shall** report every rejection as a
+human-readable sentence rather than an exception.
+
+*Acceptance criteria*
+
+- CodeMedic accepts `.js .ts .tsx .mjs .cjs .py .go .java .json`; LexGuard accepts
+  `.txt .md .csv .json`.
+- Rejections: wrong extension, empty file, NUL bytes, over-limit size, unreadable file.
+- Filenames are sanitised (`guessFileName`) before being used as a `download` attribute.
+- A UTF-8 BOM is stripped; the file name becomes the document label.
+
+### R23 — Artefact export (Ubiquitous)
+
+**The system shall** let the user export the healed artefact in the format its audience
+expects: a repaired source file under the original filename, the Markdown/JSON audit report,
+and a print-ready executive PDF.
+
+*Acceptance criteria*
+
+- CodeMedic: "Download fixed file" saves the repaired document under the uploaded name.
+- LexGuard: "Print / Save as PDF" produces a document containing the summary metrics, the
+  findings table, the full counter-proposal and the verification record — and no dashboard
+  chrome.
+- Printing before a run is impossible; the control explains why.
+
+### R24 — One-click deployment (Ubiquitous)
+
+**The system shall** ship production configuration for all three apps so a judge can reach a
+public URL without cloning.
+
+*Acceptance criteria*
+
+- Each app carries a `vercel.json` (framework, security headers, `no-store` on `/api/*`).
+- `render.yaml` declares three services with build/start commands and health checks.
+- `start` scripts honour a platform-provided `PORT`.
+- `DEPLOY.md` documents root directories and the exact environment variables.
+
+### R25 — Demo mode in production (State-driven)
+
+**WHERE** `DEMO_MODE` is truthy, **the system shall** pin every run to the deterministic
+sandbox engine even when provider keys are present, and **the system shall** label the engine
+as "Live Sandbox Engine Active" in the UI.
+
+*Acceptance criteria*
+
+- `isDemoMode` accepts `1`, `true`, `yes`, `on` (case-insensitive, trimmed) and nothing else.
+- `resolveLlmClient` returns a sandbox client whenever demo mode is on.
+- With demo mode off and no keys, the badge still reads "Live Sandbox Engine Active".
+
+### R26 — Health contract (Ubiquitous)
+
+**The system shall** expose `GET /api/health` returning `ok`, `app`, `domain`, `active`
+(provider identity) and `demoMode`, and **the system shall never** include a credential.
+
+*Acceptance criteria*
+
+- Response is `no-store` at the route and at the CDN header.
+- The portal consumes this contract for its status pills.

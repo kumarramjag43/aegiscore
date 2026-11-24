@@ -94,7 +94,7 @@ All tasks below are **complete** and verified. Commands used for verification ar
 ## 8. Verification
 
 - [x] **T8.1** `npm run typecheck` → 0 errors (core, both apps).
-- [x] **T8.2** `npm test` → 25/25 core tests pass.
+- [x] **T8.2** `npm test` → 25/25 core tests pass (32/32 after the Phase 2 upgrade).
 - [x] **T8.3** `npm run build` → both Next.js apps compile and prerender.
 - [x] **T8.4** SSE verified with `curl -N` against both apps (full event sequence).
 - [x] **T8.5** Browser run of both UIs with zero console errors and zero failed requests.
@@ -116,3 +116,32 @@ All tasks below are **complete** and verified. Commands used for verification ar
 - [ ] Token-level streaming from providers (stage-level streaming only).
 - [ ] Additional domain packs (a third pack is the natural next step and requires no core
       changes).
+
+## 11. Phase 2 — hackathon polish (complete)
+
+- [x] **T11.1** `apps/portal` on port 3000: hero, interactive SVG architecture map, live
+      status pills, product cards, skeleton-proof section, stats read from the core.
+- [x] **T11.2** `SkeletonDiagram` — hover / keyboard-focus / tap isolates the dependency path
+      (core → pack → product) and animates the flow; app nodes open the live apps.
+- [x] **T11.3** Portal status probes (`lib/status.ts`) with a 1.5 s timeout and graceful
+      `offline` state; page is `force-dynamic` so a stale engine is never cached into HTML.
+- [x] **T11.4** Core `readUploadedText` / `guessFileName` / `formatBytes` with extension,
+      size, empty, binary and BOM handling; 7 new unit tests.
+- [x] **T11.5** CodeMedic drag-and-drop intake (`.js .ts .tsx .mjs .cjs .py .go .java .json`)
+      and "Download fixed file" under the original filename.
+- [x] **T11.6** LexGuard attachment intake (`.txt .md .csv .json`) and
+      "Print / Save as PDF" producing a chrome-free A4 executive audit.
+- [x] **T11.7** `PrintSheet` artefact: metrics, findings table, counter-proposal, verification
+      record, disclaimer; `@page A4` + `print-color-adjust` stylesheet.
+- [x] **T11.8** `vercel.json` in all three apps (framework, security headers, `no-store` API).
+- [x] **T11.9** `render.yaml` blueprint: three services, health checks, optional key slots.
+- [x] **T11.10** `start` scripts honour `${PORT:-300x}` so hosted platforms can bind freely.
+- [x] **T11.11** `DEMO_MODE` implemented in the core (`isDemoMode`) and precedence documented;
+      both apps show **Live Sandbox Engine Active** when the sandbox is serving.
+- [x] **T11.12** `/api/health` extended with `ok` and `demoMode`; `DEPLOY.md` written.
+- [x] **T11.13** `.kiro/hooks/pre-commit-audit.json` (manual gate running `npm run verify`).
+- [x] **T11.14** `.kiro/specs/aegis-core/test-matrix.md` — 64-row edge-case matrix.
+- [x] **T11.15** `.kiro/specs/aegis-core/validation-log.md` — captured command output.
+- [x] **T11.16** `BLOG_POST.md` — 1,200-word technical write-up for the Blog Post prize.
+- [x] **T11.17** Root scripts: `dev`/`start` run three surfaces; `verify` = typecheck + test +
+      build across four workspaces.

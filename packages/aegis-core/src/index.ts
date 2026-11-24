@@ -35,9 +35,20 @@ export { buildMarkdown, formatMoney } from "./report";
 export { clampInput, errorMessage, redactSecrets } from "./security";
 export { extractJsonObject } from "./json";
 export { normalizeCritique, normalizeHeal, normalizeScan, normalizeVerifyNotes } from "./normalize";
-export { consumeEventStream, copyText, downloadTextFile } from "./client";
+export {
+  DEFAULT_UPLOAD_LIMIT,
+  consumeEventStream,
+  copyText,
+  downloadTextFile,
+  formatBytes,
+  guessFileName,
+  readUploadedText,
+  type UploadRule,
+  type UploadedText,
+} from "./client";
 export {
   describeProviders,
+  isDemoMode,
   resolveLlmClient,
   createSandboxClient,
   ProviderError,

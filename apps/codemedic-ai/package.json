@@ -2,12 +2,12 @@
   "name": "@aegis/codemedic-ai",
   "version": "1.0.0",
   "private": true,
-  "description": "CodeMedic AI — autonomous code and API security auditor powered by @aegiscore/core.",
+  "description": "CodeMedic AI \u2014 autonomous code and API security auditor powered by @aegiscore/core.",
   "license": "MIT",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -p ${PORT:-3001}",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

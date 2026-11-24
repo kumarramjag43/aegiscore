@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #05070e;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.35);
+  color: #f8fafc;
+}
+
+@layer utilities {
+  .tower-grid {
+    background-image:
+      linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(120% 90% at 50% 0%, #000 32%, transparent 78%);
+    -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 32%, transparent 78%);
+  }
+
+  .glass {
+    @apply rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm;
+  }
+
+  .hairline {
+    background-image: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.25), transparent);
+  }
+}
+
+/* Animated flow lines inside the architecture diagram. */
+.flow-line {
+  stroke-dasharray: 7 9;
+  animation: flow 1.15s linear infinite;
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-line {
+    animation: none;
+  }
+}

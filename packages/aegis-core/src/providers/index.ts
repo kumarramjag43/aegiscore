@@ -70,8 +70,15 @@ export function describeProviders(env: Env): ProviderCandidate[] {
  * request never fails the demo: it degrades to sandbox and the UI shows the
  * active provider from the `run.started` event.
  */
+/** `DEMO_MODE=1|true|yes|on` pins every run to the deterministic sandbox. */
+export function isDemoMode(env: Env): boolean {
+  const flag = nonEmpty(env.DEMO_MODE)?.toLowerCase();
+  return flag === "1" || flag === "true" || flag === "yes" || flag === "on";
+}
+
 export function resolveLlmClient(env: Env, pack: DomainPack): LlmClient {
   const timeoutMs = timeoutFromEnv(env);
+  if (isDemoMode(env)) return createSandboxClient(pack);
   const requested = nonEmpty(env.AEGIS_PROVIDER)?.toLowerCase();
 
   const build = (id: string): LlmClient | null => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Copy, Download, GitCompare } from "lucide-react";
+import { Check, Copy, Download, FileDown, GitCompare } from "lucide-react";
 import { cn, copyText, diffDocuments, downloadTextFile, type AuditReport } from "@aegiscore/core";
 
 const ROW_STYLE = {
@@ -11,7 +11,14 @@ const ROW_STYLE = {
   add: { left: "bg-white/[0.01]", right: "bg-emerald-500/10" },
 } as const;
 
-export function DiffPanel({ original, report }: { original: string; report: AuditReport }) {
+export interface DiffPanelProps {
+  original: string;
+  report: AuditReport;
+  /** Name offered when exporting the repaired source: the uploaded file, else the label. */
+  fileName: string;
+}
+
+export function DiffPanel({ original, report, fileName }: DiffPanelProps) {
   const [copied, setCopied] = useState(false);
   const diff = useMemo(() => diffDocuments(original, report.repairedDocument), [original, report.repairedDocument]);
 
@@ -24,6 +31,10 @@ export function DiffPanel({ original, report }: { original: string; report: Audi
 
   const download = () => {
     downloadTextFile(`codemedic-audit-${report.id}.md`, report.markdown, "text/markdown");
+  };
+
+  const downloadFixed = () => {
+    downloadTextFile(fileName, report.repairedDocument, "text/plain");
   };
 
   return (
@@ -55,11 +66,20 @@ export function DiffPanel({ original, report }: { original: string; report: Audi
           </button>
           <button
             type="button"
+            onClick={downloadFixed}
+            title={`Download the repaired source as ${fileName}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-[11px] font-medium text-slate-200 transition-colors hover:border-emerald-400/40 hover:text-emerald-200"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Download fixed file
+          </button>
+          <button
+            type="button"
             onClick={download}
             className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/15 px-2.5 py-1.5 text-[11px] font-medium text-cyan-200 ring-1 ring-cyan-400/30 transition-colors hover:bg-cyan-500/25"
           >
             <Download className="h-3.5 w-3.5" />
-            Audit report
+            Download report
           </button>
         </div>
       </div>

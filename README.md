@@ -6,20 +6,38 @@ AegisCore is a modular, reusable multi-agent audit engine. It reads an artefact,
 can hurt you, scores it, rewrites it, and then *proves the rewrite is safe* — and it does that
 for two completely different domains without knowing anything about either one.
 
-| | |
-| --- | --- |
-| 🩺 **CodeMedic AI** | Autonomous code & API security auditor and auto-patcher |
-| ⚖️ **LexGuard AI** | Contract, invoice & financial fraud detector and counter-drafter |
+| Surface | Port | What it is |
+| --- | --- | --- |
+| 🛰️ **AegisCore Portal** | 3000 | Interactive launch deck: the skeleton, the two products, live engine status |
+| 🩺 **CodeMedic AI** | 3001 | Autonomous code & API security auditor and auto-patcher |
+| ⚖️ **LexGuard AI** | 3002 | Contract, invoice & financial fraud detector and counter-drafter |
 
 Both applications are powered by the **same** package: `packages/aegis-core`. Neither app
 contains a prompt, a detector, or a pipeline stage. Delete one app and the other still works.
 
 ![status](https://img.shields.io/badge/build-passing-34d399)
 ![types](https://img.shields.io/badge/typecheck-0%20errors-22d3ee)
-![tests](https://img.shields.io/badge/tests-25%20passing-a78bfa)
+![tests](https://img.shields.io/badge/tests-32%20passing-a78bfa)
 ![providers](https://img.shields.io/badge/providers-OpenAI%20%C2%B7%20Groq%20%C2%B7%20Gemini%20%C2%B7%20Claude-fbbf24)
 ![mode](https://img.shields.io/badge/sandbox-no%20API%20key%20required-94a3b8)
+![deploy](https://img.shields.io/badge/Vercel%20%2B%20Render-one--click%20configs-0ea5e9)
 ![license](https://img.shields.io/badge/license-MIT-64748b)
+
+---
+
+## Gallery
+
+| AegisCore Portal — one core, two industries | Architecture map isolates a path on hover |
+| --- | --- |
+| ![Portal](docs/screenshots/01-portal-hero.png) | ![Diagram](docs/screenshots/02-portal-diagram.png) |
+
+| CodeMedic AI — findings | CodeMedic AI — diff + exports |
+| --- | --- |
+| ![CodeMedic findings](docs/screenshots/03-codemedic-findings.png) | ![CodeMedic diff](docs/screenshots/04-codemedic-diff.png) |
+
+| LexGuard AI — red-flag heatmap | LexGuard AI — A4 executive PDF |
+| --- | --- |
+| ![LexGuard heatmap](docs/screenshots/05-lexguard-heatmap.png) | ![LexGuard print](docs/screenshots/07-lexguard-print-pdf.png) |
 
 ---
 
@@ -64,7 +82,16 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3001** (CodeMedic AI) and **http://localhost:3002** (LexGuard AI).
+Then open **http://localhost:3000** — the launch portal — and enter either product from there:
+
+| URL | Surface |
+| --- | --- |
+| http://localhost:3000 | AegisCore portal (architecture map + launch buttons) |
+| http://localhost:3001 | CodeMedic AI — DevSecOps console |
+| http://localhost:3002 | LexGuard AI — legal & finance desk |
+
+The portal reads `NEXT_PUBLIC_CODEMEDIC_URL` / `NEXT_PUBLIC_LEXGUARD_URL`, so the same build
+launches local, preview or production deployments.
 
 That is it. **No API key, no database, no Docker, no Python.** With no keys present both apps
 run in **Interactive Demo Sandbox Mode**: the real pipeline executes, driven by deterministic
@@ -130,7 +157,10 @@ Dark DevSecOps console.
 - Watch Scanner → Critic → Healer → Verifier work line by line.
 - **Findings**: severity, score, exact line, the offending code, why it is exploitable, the fix.
 - **Diff**: original vs patched, side by side, with `+ / ~ / -` markers.
-- **Copy patched code**, download the **Markdown** or **JSON** audit report.
+- **Drop a source file** (`.js .ts .tsx .mjs .cjs .py .go .java .json`) or paste it — the
+  drop zone validates type, size and encoding before analysis.
+- **Download fixed file** under the original filename; **copy patched code**; download the
+  **Markdown** or **JSON** audit report.
 - Risk gauge with derived severity counters and a signed verification list.
 
 Real output from the SQL injection preset:
@@ -152,6 +182,9 @@ Executive legal & finance audit desk — a deliberately different visual languag
   (e.g. `$250,000 – $625,000` for the loan preset).
 - **Counter-draft**: a complete, exportable *Counter-Proposal and Audit Notice* — reservation of
   rights, clause-by-clause redlines, protective terms, and next steps, rendered on paper.
+- **Attach a document** (`.txt .md .csv .json`) and **Print / Save as PDF**: the console is
+  replaced by a chrome-free A4 executive audit with metrics, findings table, full
+  counter-proposal and verification record.
 
 The invoice preset is reconciled arithmetically, not described:
 
@@ -217,10 +250,17 @@ aegiscore/
 │   │   └── packs/
 │   │       ├── code-security/      # detectors, repairs, prompts, 3 presets
 │   │       └── contract-fraud/     # signals, clause parser, counter-draft, 3 presets
-│   └── test/pipeline.test.ts       # 25 tests, no network
-├── apps/codemedic-ai/              # :3001
-├── apps/lexguard-ai/               # :3002
-├── .kiro/                          # specs, steering, agent hook
+│   └── test/pipeline.test.ts       # 32 tests, no network
+├── apps/portal/                    # :3000  launcher + interactive architecture map
+├── apps/codemedic-ai/              # :3001  DevSecOps console
+├── apps/lexguard-ai/               # :3002  executive audit desk
+├── .kiro/                          # specs (EARS), design, tasks, steering, 2 hooks
+│   ├── specs/aegis-core/           # requirements · design · tasks · test-matrix · validation-log
+│   ├── steering/architecture-rules.md
+│   └── hooks/                      # auto-audit-on-save · pre-commit-audit
+├── render.yaml                     # one-click Render blueprint (3 services)
+├── DEPLOY.md                       # Vercel / Render walkthrough + DEMO_MODE matrix
+├── BLOG_POST.md                    # the build story (1,200 words)
 └── .env.example
 ```
 
@@ -250,9 +290,10 @@ One new directory, one export line. No changes to `pipeline.ts`, `scoring.ts`, `
 ## Verification
 
 ```bash
-npm run typecheck   # 0 errors — core + both apps
-npm test            # 25/25 passing
-npm run build       # both Next.js apps compile and prerender
+npm run typecheck   # 0 errors — core, portal, both products
+npm test            # 32/32 passing
+npm run build       # all three Next.js apps compile and prerender
+npm run verify      # all of the above, in one command
 ```
 
 The test suite exercises the real pipeline with `pace: 0` and an injectable provider:
@@ -273,9 +314,39 @@ The test suite exercises the real pipeline with `pace: 0` and an injectable prov
 | --- | --- |
 | `.kiro/specs/aegis-core/requirements.md` | 17 EARS requirements with acceptance criteria |
 | `.kiro/specs/aegis-core/design.md` | Architecture, Mermaid data flow, scoring, verification, failure modes, trade-offs |
-| `.kiro/specs/aegis-core/tasks.md` | Completed implementation checklist |
+| `.kiro/specs/aegis-core/tasks.md` | Completed implementation checklist (two phases) |
+| `.kiro/specs/aegis-core/test-matrix.md` | 64-row edge-case matrix: input, pipeline, both domains, UI, deploy |
+| `.kiro/specs/aegis-core/validation-log.md` | Captured output of every verification command, with timings |
 | `.kiro/steering/architecture-rules.md` | The Skeleton Crew rules that keep one core reusable |
-| `.kiro/hooks/auto-audit-on-save.json` | Agent hook: re-run `npm run audit:quick` on save |
+| `.kiro/hooks/auto-audit-on-save.json` | Agent hook: re-run `npm run audit:quick` when a source file is saved |
+| `.kiro/hooks/pre-commit-audit.json` | Agent hook: gate the commit on `npm run verify` |
+
+---
+
+## Deploy in five minutes
+
+Public demo URLs without a database, and without a single API key.
+
+**Vercel** — import the repo three times, set the root directory per project
+(`apps/portal`, `apps/codemedic-ai`, `apps/lexguard-ai`), leave the framework preset as
+Next.js, and add `NEXT_PUBLIC_CODEMEDIC_URL` / `NEXT_PUBLIC_LEXGUARD_URL` to the portal.
+Each app ships its own `vercel.json` (security headers, `no-store` on `/api/*`).
+
+**Render** — New → Blueprint → pick the repo → Apply. `render.yaml` declares all three
+services with build/start commands, health checks and optional key slots.
+
+```bash
+DEMO_MODE=true      # pin the deterministic engine even if keys exist
+GEMINI_API_KEY=...  # optional: any one key switches the same pipeline to a live model
+```
+
+| `DEMO_MODE` | key present | engine | badge in the UI |
+| --- | --- | --- | --- |
+| `true` | any | sandbox | **Live Sandbox Engine Active** |
+| unset | yes | that provider | `Live · <provider>` |
+| unset | no | sandbox | **Live Sandbox Engine Active** |
+
+Full walkthrough, root directories and health-check contract: [DEPLOY.md](./DEPLOY.md).
 
 ---
 
@@ -283,6 +354,8 @@ The test suite exercises the real pipeline with `pace: 0` and an injectable prov
 
 - Inputs are validated for type, emptiness, and length (`AEGIS_MAX_INPUT_CHARS`, default
   200 000) before any model call.
+- Uploads are validated for extension, byte size, NUL bytes and BOM, and filenames are
+  sanitised before they are used as a download attribute.
 - Keys live in `process.env` only. `/api/health` exposes provider *identity*, never credentials.
 - Provider errors pass through `redactSecrets` before reaching the UI, so an upstream error
   cannot echo a key back to the browser.
@@ -294,7 +367,8 @@ The test suite exercises the real pipeline with `pace: 0` and an injectable prov
 
 - Detectors are rule-based and deliberately explainable; they are not a substitute for a
   semantic scanner or a lawyer. The report says so, in the report.
-- Runs are request-scoped: there is no history, no database, no auth.
+- Runs are request-scoped: there is no history, no database, no auth. A public deployment is
+  a demo surface, not a multi-tenant service.
 - Streaming is stage-level, not token-level.
 
 ---
@@ -303,4 +377,6 @@ The test suite exercises the real pipeline with `pace: 0` and an injectable prov
 
 MIT — see [LICENSE](./LICENSE).
 
-Built for the **Kiroween 2026** hackathon: *Skeleton Crew* and *Best Demo*.
+Built for the **Kiroween 2026** hackathon: *Skeleton Crew*, *Best Demo* and *Blog Post*.
+
+Read the build story: **[How we built AegisCore](./BLOG_POST.md)**.

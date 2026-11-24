@@ -18,6 +18,7 @@ import {
 import {
   cn,
   consumeEventStream,
+  guessFileName,
   type AgentDescriptor,
   type AgentEvent,
   type AgentStage,
@@ -30,6 +31,7 @@ import { RiskGauge } from "./RiskGauge";
 import { FindingsPanel } from "./FindingsPanel";
 import { DiffPanel } from "./DiffPanel";
 import { ReportPanel } from "./ReportPanel";
+import { FileDrop } from "./FileDrop";
 
 type Tab = "agents" | "findings" | "diff" | "report";
 type Status = "idle" | "running" | "done" | "error";
@@ -42,6 +44,8 @@ const EMPTY_STAGES: Record<AgentStage, StageState> = {
 };
 
 const LEXGUARD_URL = process.env.NEXT_PUBLIC_LEXGUARD_URL ?? "http://localhost:3002";
+
+const SOURCE_EXTENSIONS = [".js", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go", ".java", ".json"];
 
 const TABS: { id: Tab; label: string; icon: typeof Bug }[] = [
   { id: "agents", label: "Live agents", icon: SquareTerminal },
@@ -69,6 +73,8 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
   const [provider, setProvider] = useState<ProviderInfo | null>(null);
   const [tab, setTab] = useState<Tab>("agents");
   const [activePreset, setActivePreset] = useState<string | null>(first?.id ?? null);
+  const [file, setFile] = useState<{ name: string; bytes: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const logId = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -223,6 +229,8 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
     setInput(preset.content);
     setTitle(preset.label);
     setActivePreset(preset.id);
+    setFile(null);
+    setUploadError(null);
     setReport(null);
     setError(null);
     setLogs([]);
@@ -273,7 +281,11 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
                   ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
                   : "border-slate-500/30 bg-slate-500/10 text-slate-300",
               )}
-              title="Active model provider for this app"
+              title={
+                provider?.mode === "live"
+                  ? "Live model calls are enabled for this app"
+                  : "Deterministic Aegis sandbox — the full pipeline runs with no API key"
+              }
             >
               <span
                 className={cn(
@@ -281,7 +293,11 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
                   provider?.mode === "live" ? "bg-emerald-400" : "bg-slate-400",
                 )}
               />
-              {provider ? provider.label : "detecting provider…"}
+              {provider
+                ? provider.mode === "live"
+                  ? `Live · ${provider.label}`
+                  : "Live Sandbox Engine Active"
+                : "detecting provider…"}
             </span>
             <a
               href={LEXGUARD_URL}
@@ -328,6 +344,31 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
                 placeholder="Paste the handler, route or module you want audited…"
                 className="scroll-slim mt-1 h-[240px] w-full resize-none rounded-lg border border-white/10 bg-black/40 p-3 font-mono text-[11.5px] leading-relaxed text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/50"
               />
+
+              <FileDrop
+                rule={{ extensions: SOURCE_EXTENSIONS, maxBytes: 200_000 }}
+                accept={SOURCE_EXTENSIONS.join(",")}
+                hint=".js .ts .py .go .java .json · 200 KB"
+                file={file}
+                disabled={status === "running"}
+                onClear={() => setFile(null)}
+                onLoaded={(loaded) => {
+                  setFile({ name: loaded.name, bytes: loaded.bytes });
+                  setUploadError(null);
+                  setInput(loaded.text);
+                  setTitle(loaded.name);
+                  setActivePreset(null);
+                  setReport(null);
+                  setError(null);
+                  setStatus("idle");
+                }}
+                onError={setUploadError}
+              />
+              {uploadError && (
+                <p className="mt-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-2.5 py-1.5 text-[10.5px] text-rose-200">
+                  {uploadError}
+                </p>
+              )}
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {presets.map((preset) => (
@@ -454,7 +495,11 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
 
               {tab === "diff" &&
                 (report ? (
-                  <DiffPanel original={input} report={report} />
+                  <DiffPanel
+                    original={input}
+                    report={report}
+                    fileName={guessFileName(file?.name ?? title, ".js")}
+                  />
                 ) : (
                   <EmptyState label="The side-by-side diff is generated by the Auto-Healer." />
                 ))}
@@ -478,7 +523,7 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
           <span className="ml-auto">
             {provider?.mode === "live"
               ? "Live model calls enabled"
-              : "Sandbox mode — no API key required, deterministic results"}
+              : "Live Sandbox Engine — deterministic pipeline, no API key required"}
           </span>
         </footer>
       </div>

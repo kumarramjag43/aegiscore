@@ -90,6 +90,53 @@ Known gotchas:
 
 ## 4. Lessons Learned (newest first)
 
+### 2026-11-24 — AegisCore Phase 2 (portal, uploads, PDF, deploy)
+
+**Project facts (durable, verified)**
+- Three surfaces now: `apps/portal` (:3000), `apps/codemedic-ai` (:3001),
+  `apps/lexguard-ai` (:3002). Root `dev`/`start` run all three with
+  `concurrently -n portal,codemedic,lexguard`.
+- `npm run verify` = typecheck (4 workspaces) + test + build (3 apps). Use it as
+  the only gate; it exits non-zero on any drift.
+- 32 unit tests / 9 suites (was 25/7). New: `file intake`, `demo mode`.
+- `apps/portal` is a server component that probes both apps' `/api/health`
+  (1.5 s timeout) and renders stats from `PACKS`/`DETECTORS`/`LEGAL_SIGNALS` —
+  no hard-coded marketing numbers. `dynamic = "force-dynamic"` so status is
+  never baked into HTML.
+- Upload validation lives in the core (`readUploadedText`, `guessFileName`,
+  `formatBytes`) so both apps share extension/size/binary/BOM rules.
+- LexGuard PDF is a `PrintSheet` rendered from the report with
+  `hidden print:block`, while the dashboard chrome carries `print:hidden`.
+  `@page { size: A4; margin: 14mm }` + `print-color-adjust: exact`.
+- `DEMO_MODE` (1/true/yes/on) pins the sandbox in `resolveLlmClient`; health
+  reports `ok` + `demoMode`. Badge reads "Live Sandbox Engine Active".
+- Deploy artifacts: `vercel.json` per app (headers + `no-store` on `/api/*`),
+  `render.yaml` (3 services, health checks), `DEPLOY.md`, `start` scripts honour
+  `${PORT:-300x}`.
+
+**Gotchas that cost time**
+- After `next build`, a running `next dev` on the same app is stale: restart the
+  dev stack before browser QA or you will test old chunks.
+- Tailwind `print:` variants do nothing unless the printed element is a sibling
+  of (not a child of) the `print:hidden` wrapper.
+- `innerText` returns CSS-transformed (uppercase) text — assert case-insensitively
+  or you get false negatives on stat cards.
+- Tab buttons include their badge inside the button, so
+  `textContent.trim() === 'Diff'` fails when a badge is present
+  (`'Diff2'`). Match with `startsWith`.
+- No Playwright in the container: drive Chromium directly over CDP
+  (`--remote-debugging-port=35029`, global `WebSocket` in Node 24). File uploads
+  work through `DOM.setFileInputFiles`; print layout through
+  `Emulation.setEmulatedMedia({media:'print'})`.
+- In a JS template literal, `\/` collapses to `/` and silently breaks a regex
+  literal in the evaluated code. Use `includes()` in CDP assertions.
+
+**Product decisions worth keeping**
+- "Download fixed file" keeps the uploaded filename; report export is a separate
+  button. Judges check that the fixed file is usable, not that it is renamed.
+- Print output is generated from the report model, never a screenshot, so the
+  PDF contains everything even if a panel is scrolled out of view.
+
 ### 2026-11-24 — AegisCore built (Kiroween Skeleton Crew)
 
 **Project facts (durable, verified)**
@@ -203,6 +250,14 @@ Known gotchas:
 ---
 
 ## 5. Open Questions / Unverified
+
+- AegisCore live-provider path: no real key exists in this container, so the
+  HTTP call to OpenAI/Gemini/Groq/Anthropic has never executed here. Resolution,
+  fallback and JSON extraction are covered with a stubbed provider.
+- Vercel/Render deploy configs are syntactically valid and reviewed, but no
+  public deployment was performed from this environment.
+- Print layout verified in Chromium only; Firefox/Safari `@page` handling is
+  untested.
 
 - Does the OpenHands Cloud UI import `.openhands/mcp.json` directly, or must
   servers be re-entered per settings key? Unverified — no authenticated client

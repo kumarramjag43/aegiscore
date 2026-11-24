@@ -1,0 +1,14 @@
+{
+  "name": "AegisCore — pre-commit audit gate",
+  "description": "Manual gate before any commit that touches the skeleton: typecheck all four workspaces, run the deterministic pipeline suite, then build all three production bundles. Blocks a commit when the Skeleton Crew contract (one core, two products, zero drift) is broken.",
+  "version": "1",
+  "enabled": true,
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run verify",
+    "timeout": 600
+  }
+}
