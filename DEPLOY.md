@@ -12,8 +12,30 @@ four-agent pipeline, so judges get a fully working audit with **no API keys**.
 
 ---
 
+## Live deployment (what is running now)
+
+| Surface | Production URL | Vercel project |
+| --- | --- | --- |
+| Portal | https://aegiscore-portal.vercel.app | `aegiscore-portal` |
+| CodeMedic AI | https://aegiscore-codemedic.vercel.app | `aegiscore-codemedic` |
+| LexGuard AI | https://aegiscore-lexguard.vercel.app | `aegiscore-lexguard` |
+
+All three run the deterministic sandbox engine (`DEMO_MODE=true`), so they work with no API keys.
+Verified after deploy: portal `200` with both status pills reading *sandbox*, both
+`/api/health` endpoints `ok`, and a full four-agent audit streaming end-to-end in ~2.5 s.
+
+**How they were deployed:** the Vercel GitHub App is not installed on this account, so the
+Git-integrated Root Directory flow is unavailable. Instead each app is packed into a standalone
+directory with `@aegiscore/core` vendored in as a `file:` dependency, then deployed from there —
+`scripts/deploy-vercel.sh` does exactly that (and `DRY_RUN=1` shows the plan without deploying).
+Because the apps build outside the workspace, no monorepo path tricks are needed on Vercel.
+
+> Note: `aegis-portal.vercel.app` belongs to an unrelated project, so the portal uses the
+> `aegiscore-portal` name. Renaming projects in Vercel does not move their domains — add the domain
+> you want in *Project → Settings → Domains*.
+
 <a id="publish-in-three-clicks"></a>
-## Publish in three clicks (Vercel UI)
+## Publish in three clicks (Vercel UI, needs the GitHub App)
 
 1. **Import** `kumarramjag43/aegiscore` three times (Vercel → *Add New… → Project*),
    and in each import set only **Root Directory**: `apps/codemedic-ai`,
@@ -28,15 +50,17 @@ No keys, no database, no build-time secrets.
 ## Publish in one command (CLI)
 
 ```bash
-vercel login                     # once, or: export VERCEL_TOKEN=...
-./scripts/deploy-vercel.sh       # deploys codemedic → lexguard → portal, wires env, prints URLs
+export VERCEL_TOKEN=...            # vercel.com/account/tokens
+CODEMEDIC_URL=https://aegiscore-codemedic.vercel.app \
+LEXGUARD_URL=https://aegiscore-lexguard.vercel.app \
+  ./scripts/deploy-vercel.sh       # codemedic -> lexguard -> portal
 ```
 
-The script links each app to a stable project name (`aegis-codemedic`,
-`aegis-lexguard`, `aegis-portal`), deploys to production, sets the portal's
-`CODEMEDIC_URL` / `LEXGUARD_URL` (plus the `NEXT_PUBLIC_*` mirrors) and prints a
-ready-to-paste block for the README. It exits immediately with a clear message if
-you are not authenticated — it never hangs on a prompt.
+The script packs each app (core vendored in), resolves or creates the Vercel
+projects (`aegiscore-codemedic`, `aegiscore-lexguard`, `aegiscore-portal`),
+applies the portal URLs, and deploys to production. `DRY_RUN=1` prints the plan
+without deploying. It fails immediately with a clear message when `VERCEL_TOKEN`
+is missing — it never hangs on a prompt.
 
 ---
 

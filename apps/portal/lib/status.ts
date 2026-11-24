@@ -16,7 +16,9 @@ export async function probeEngine(baseUrl: string): Promise<EngineStatus> {
     const response = await fetch(url, {
       cache: "no-store",
       headers: { accept: "application/json" },
-      signal: AbortSignal.timeout(1500),
+      // Cold serverless starts (TLS + first invocation) can take >1.5 s, and a
+      // timed-out probe renders as "offline" on the launch page.
+      signal: AbortSignal.timeout(4000),
     });
     if (!response.ok) return { mode: "offline", label: `HTTP ${response.status}` };
 

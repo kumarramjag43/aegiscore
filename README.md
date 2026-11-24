@@ -4,19 +4,21 @@
 
 ## ▶ Live demo
 
-| Surface | Live URL | Deploy target (Root Directory) |
+| Surface | Live URL | Status |
 | --- | --- | --- |
-| 🛰️ **AegisCore Portal** | `https://<portal>.vercel.app` | `apps/portal` |
-| 🩺 **CodeMedic AI** | `https://<codemedic>.vercel.app` | `apps/codemedic-ai` |
-| ⚖️ **LexGuard AI** | `https://<lexguard>.vercel.app` | `apps/lexguard-ai` |
+| 🛰️ **AegisCore Portal** | **https://aegiscore-portal.vercel.app** | live |
+| 🩺 **CodeMedic AI** | **https://aegiscore-codemedic.vercel.app** | live |
+| ⚖️ **LexGuard AI** | **https://aegiscore-lexguard.vercel.app** | live |
 
-> **Deployment status:** this repository ships the deploy configuration, not a hosted URL yet.
-> Publish all three surfaces in ~4 minutes — one command:
-> `./scripts/deploy-vercel.sh` (after `vercel login`), or the
-> [three-click path in DEPLOY.md](DEPLOY.md#publish-in-three-clicks).
-> The script prints a ready-to-paste block; replace the three placeholders above with it.
-> Until then, `npm install && npm run dev` gives identical behaviour on ports 3000/3001/3002 —
-> every surface runs the real pipeline in sandbox mode, with **no API key**.
+Every surface is running the **real four-agent pipeline in sandbox mode** — no API key, no database,
+nothing to configure. Try it: open the portal, click through to a product, hit a preset, watch the
+agents stream.
+
+> **Deployed on Vercel** (Hobby) from a single repository. Products are built as standalone roots
+> with `@aegiscore/core` vendored in; the portal's cross-app status pills probe each product's
+> `/api/health`. Redeploy or self-host with `scripts/deploy-vercel.sh` — see
+> [DEPLOY.md](DEPLOY.md). Locally, `npm install && npm run dev` gives the same behaviour on
+> ports 3000/3001/3002.
 
 AegisCore is a modular, reusable multi-agent audit engine. It reads an artefact, finds what
 can hurt you, scores it, rewrites it, and then *proves the rewrite is safe* — and it does that
