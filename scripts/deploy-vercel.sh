@@ -92,7 +92,7 @@ deploy() { # app-dir project-name
   set -- $ids
   (cd "$dir" &&
     VERCEL_TOKEN="$VERCEL_TOKEN" VERCEL_ORG_ID="$2" VERCEL_PROJECT_ID="$1" VERCEL_TELEMETRY_DISABLED=1 \
-      npx -y vercel@latest deploy --prod --yes 2>&1 | tail -n 3)
+      npx -y vercel@latest deploy --prod --yes 2>&1 | grep -Eo 'https://[a-z0-9.-]+' | tail -n 1)
 }
 
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "portal" ]; then

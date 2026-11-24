@@ -85,18 +85,23 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
   const logId = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  /** Ask the server which engine it will use — never assume after a key change. */
+  const refreshProvider = () => {
     fetch("/api/health", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { active?: ProviderInfo } | null) => {
-        if (!cancelled && data?.active) setProvider(data.active);
+        if (data?.active) setProvider(data.active);
       })
       .catch(() => undefined);
+  };
+
+  useEffect(() => {
+    refreshProvider();
     return () => {
-      cancelled = true;
       abortRef.current?.abort();
     };
+    // Mount-only: the badge is refreshed explicitly when the key changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pushLog = (line: Omit<LogLine, "id">) => {
@@ -322,7 +327,13 @@ export function CodeMedicWorkspace({ presets, agents, actionLabel, documentNoun 
           </div>
         </header>
 
-        <ByokPanel storageKey="aegis.byok.codemedic" onChange={setByok} />
+        <ByokPanel
+          storageKey="aegis.byok.codemedic"
+          onChange={(stored) => {
+            setByok(stored);
+            if (!stored) refreshProvider();
+          }}
+        />
 
         <main className="mt-5 grid flex-1 gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
           <section className="flex min-h-0 flex-col gap-4">

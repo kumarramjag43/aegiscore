@@ -277,6 +277,28 @@ Known gotchas:
 
 ---
 
+### 2026-11-24 — BYOK + negative-case suite
+
+- **A pasted key must beat `DEMO_MODE`.** Both Vercel projects set `DEMO_MODE=true`, and
+  `isDemoMode()` short-circuits `resolveLlmClient` before any key is read. BYOK therefore builds an
+  env overlay with `DEMO_MODE: "false"` and `AEGIS_PROVIDER: <provider>`; otherwise a judge's key is
+  silently ignored and the badge stays "Sandbox".
+- **Redaction needs exact values, not just patterns.** `redactSecrets` pattern list cannot know an
+  arbitrary key shape, so `errorMessage(text, extra)` now takes request-scoped values. Thread it via
+  `RunAuditOptions.redact`; the route passes the BYOK key. Verified on production: a bogus Gemini key
+  returns HTTP 400 upstream and the key never appears in the SSE stream.
+- **Detector false positives were real, and the negative tests found them:** "1% per month or the
+  maximum rate permitted by law" (the remedy) tripped `penalty.interest`; mutual termination on 30
+  days' notice tripped `termination.oneway` because "or immediately for breach" sat inside the 60-char
+  window; "non-exclusive jurisdiction" matched `exclusive jurisdiction` as a substring. Fixed with a
+  new `unless` carve-out plus tighter patterns — the three predatory presets still raise 2–3 criticals.
+- **Push gotcha:** `VAR=value git push https://x-access-token:$VAR@...` expands `$VAR` before the
+  assignment applies, so the URL gets an empty token ("Invalid username or token"). `export VAR=...`
+  first, or use a separate statement.
+- **Repo metadata (description/topics) needs `administration` scope.** Neither the fine-grained PAT
+  (Contents R/W) nor the OpenHands App token can `PATCH /repos/:owner/:repo` — it returns 403
+  "Resource not accessible by integration". Paste the block in `SUBMISSION_READY.md` manually.
+
 ## 5. Open Questions / Unverified
 
 - AegisCore live-provider path: no real key exists in this container, so the
