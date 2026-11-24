@@ -295,6 +295,9 @@ Known gotchas:
 - **Push gotcha:** `VAR=value git push https://x-access-token:$VAR@...` expands `$VAR` before the
   assignment applies, so the URL gets an empty token ("Invalid username or token"). `export VAR=...`
   first, or use a separate statement.
+- **A badge derived from the last run goes stale.** Clearing a BYOK key left "Live · Gemini" on screen
+  because `provider` only updated on `run.started`. Re-probe `/api/health` on key change instead of
+  inferring the mode client-side — the server is the only honest source of "which engine runs next".
 - **Repo metadata (description/topics) needs `administration` scope.** Neither the fine-grained PAT
   (Contents R/W) nor the OpenHands App token can `PATCH /repos/:owner/:repo` — it returns 403
   "Resource not accessible by integration". Paste the block in `SUBMISSION_READY.md` manually.
